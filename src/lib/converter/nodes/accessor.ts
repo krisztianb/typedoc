@@ -22,7 +22,7 @@ export class AccessorConverter extends ConverterNodeComponent<
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The signature declaration node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     convert(
         context: Context,
@@ -34,23 +34,25 @@ export class AccessorConverter extends ConverterNodeComponent<
             ReflectionKind.Accessor
         );
 
-        context.withScope(accessor, () => {
-            if (node.kind === ts.SyntaxKind.GetAccessor) {
-                accessor!.getSignature = createSignature(
-                    context,
-                    node,
-                    "__get",
-                    ReflectionKind.GetSignature
-                );
-            } else {
-                accessor!.setSignature = createSignature(
-                    context,
-                    node,
-                    "__set",
-                    ReflectionKind.SetSignature
-                );
-            }
-        });
+        if (accessor) {
+            context.withScope(accessor, () => {
+                if (node.kind === ts.SyntaxKind.GetAccessor) {
+                    accessor.getSignature = createSignature(
+                        context,
+                        node,
+                        "__get",
+                        ReflectionKind.GetSignature
+                    );
+                } else {
+                    accessor.setSignature = createSignature(
+                        context,
+                        node,
+                        "__set",
+                        ReflectionKind.SetSignature
+                    );
+                }
+            });
+        }
 
         return accessor;
     }

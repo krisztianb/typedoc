@@ -427,10 +427,11 @@ export class Context {
     ): ts.MapLike<Type> {
         const typeParameters: ts.MapLike<Type> = {};
 
-        if (preserve) {
-            Object.keys(this.typeParameters || {}).forEach((key) => {
-                typeParameters[key] = this.typeParameters![key];
-            });
+        if (preserve && this.typeParameters) {
+            const keys = Object.keys(this.typeParameters);
+            for (const key of keys) {
+                typeParameters[key] = this.typeParameters[key];
+            }
         }
 
         parameters.forEach(

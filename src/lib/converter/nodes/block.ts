@@ -53,7 +53,7 @@ export class BlockConverter extends ConverterNodeComponent<
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The source file node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     private convertSourceFile(
         context: Context,
@@ -63,16 +63,19 @@ export class BlockConverter extends ConverterNodeComponent<
 
         context.withSourceFile(node, () => {
             if (this.mode === SourceFileMode.Modules) {
-                result = createDeclaration(
+                const declaration = createDeclaration(
                     context,
                     node,
                     ReflectionKind.Module,
                     node.fileName
                 );
-                context.withScope(result, () => {
-                    this.convertStatements(context, node);
-                    result!.setFlag(ReflectionFlag.Exported);
-                });
+                if (declaration) {
+                    context.withScope(declaration, () => {
+                        this.convertStatements(context, node);
+                        declaration.setFlag(ReflectionFlag.Exported);
+                    });
+                }
+                result = declaration;
             } else {
                 this.convertStatements(context, node);
             }

@@ -19,7 +19,7 @@ export class AliasConverter extends ConverterNodeComponent<
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The type alias declaration node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     convert(
         context: Context,
@@ -31,13 +31,15 @@ export class AliasConverter extends ConverterNodeComponent<
             ReflectionKind.TypeAlias
         );
 
-        context.withScope(alias, node.typeParameters, () => {
-            alias!.type = this.owner.convertType(
-                context,
-                node.type,
-                context.getTypeAtLocation(node.type)
-            );
-        });
+        if (alias) {
+            context.withScope(alias, node.typeParameters, () => {
+                alias.type = this.owner.convertType(
+                    context,
+                    node.type,
+                    context.getTypeAtLocation(node.type)
+                );
+            });
+        }
 
         return alias;
     }
