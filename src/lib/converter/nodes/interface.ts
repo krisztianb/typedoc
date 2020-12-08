@@ -24,7 +24,7 @@ export class InterfaceConverter extends ConverterNodeComponent<
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The interface declaration node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     convert(
         context: Context,
@@ -41,55 +41,57 @@ export class InterfaceConverter extends ConverterNodeComponent<
             );
         }
 
-        context.withScope(reflection, node.typeParameters, () => {
-            if (node.members) {
-                node.members.forEach((member) => {
-                    this.owner.convertNode(context, member);
-                });
-            }
+        if (reflection) {
+            const ref = reflection;
 
-            const extendsClause = toArray(node.heritageClauses).find(
-                (h) => h.token === ts.SyntaxKind.ExtendsKeyword
-            );
-            if (extendsClause) {
-                extendsClause.types.forEach((baseType) => {
-                    const type = context.getTypeAtLocation(baseType);
-                    if (!context.isInherit) {
-                        if (!reflection!.extendedTypes) {
-                            reflection!.extendedTypes = [];
-                        }
-                        const convertedType = this.owner.convertType(
-                            context,
-                            baseType,
-                            type
-                        );
-                        if (convertedType) {
-                            reflection!.extendedTypes.push(convertedType);
-                        }
-                    }
+            context.withScope(reflection, node.typeParameters, () => {
+                if (node.members) {
+                    node.members.forEach((member) => {
+                        this.owner.convertNode(context, member);
+                    });
+                }
 
-                    if (type) {
-                        const typesToInheritFrom: ts.Type[] = type.isIntersection()
-                            ? type.types
-                            : [type];
-
-                        typesToInheritFrom.forEach(
-                            (typeToInheritFrom: ts.Type) => {
-                                typeToInheritFrom.symbol &&
-                                    typeToInheritFrom.symbol.declarations.forEach(
-                                        (declaration) => {
-                                            context.inherit(
-                                                declaration,
-                                                baseType.typeArguments
-                                            );
-                                        }
-                                    );
+                const extendsClause = toArray(node.heritageClauses).find(
+                    (h) => h.token === ts.SyntaxKind.ExtendsKeyword
+                );
+                if (extendsClause) {
+                    extendsClause.types.forEach((baseType) => {
+                        const type = context.getTypeAtLocation(baseType);
+                        if (!context.isInherit) {
+                            ref.extendedTypes ??= [];
+                            const convertedType = this.owner.convertType(
+                                context,
+                                baseType,
+                                type
+                            );
+                            if (convertedType) {
+                                ref.extendedTypes.push(convertedType);
                             }
-                        );
-                    }
-                });
-            }
-        });
+                        }
+
+                        if (type) {
+                            const typesToInheritFrom: ts.Type[] = type.isIntersection()
+                                ? type.types
+                                : [type];
+
+                            typesToInheritFrom.forEach(
+                                (typeToInheritFrom: ts.Type) => {
+                                    typeToInheritFrom.symbol &&
+                                        typeToInheritFrom.symbol.declarations.forEach(
+                                            (declaration) => {
+                                                context.inherit(
+                                                    declaration,
+                                                    baseType.typeArguments
+                                                );
+                                            }
+                                        );
+                                }
+                            );
+                        }
+                    });
+                }
+            });
+        }
 
         return reflection;
     }

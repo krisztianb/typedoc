@@ -164,7 +164,7 @@ export class CommentPlugin extends ConverterComponent {
         reflection: TypeParameterReflection
     ) {
         const comment = reflection.parent && reflection.parent.comment;
-        if (comment) {
+        if (comment && comment.tags) {
             let tag = comment.getTag("typeparam", reflection.name);
             if (!tag) {
                 tag = comment.getTag("template", reflection.name);
@@ -178,8 +178,7 @@ export class CommentPlugin extends ConverterComponent {
 
             if (tag) {
                 reflection.comment = new Comment(tag.text);
-                // comment.tags must be set if we found a tag.
-                comment.tags!.splice(comment.tags!.indexOf(tag), 1);
+                comment.tags.splice(comment.tags.indexOf(tag), 1);
             }
         }
     }
@@ -291,9 +290,9 @@ export class CommentPlugin extends ConverterComponent {
         // remove functions with empty signatures after their signatures have been removed
         const [allRemoved, someRemoved] = partition(
             hidden
-                .map((reflection) => reflection.parent!)
+                .map((reflection) => reflection.parent)
                 .filter((method) =>
-                    method.kindOf(ReflectionKind.FunctionOrMethod)
+                    method?.kindOf(ReflectionKind.FunctionOrMethod)
                 ) as DeclarationReflection[],
             (method) => method.signatures?.length === 0
         );
@@ -302,7 +301,7 @@ export class CommentPlugin extends ConverterComponent {
         );
         someRemoved.forEach((reflection) => {
             reflection.sources = uniq(
-                reflection.signatures!.reduce<SourceReference[]>(
+                reflection.signatures?.reduce<SourceReference[]>(
                     (c, s) => c.concat(s.sources || []),
                     []
                 )
@@ -330,16 +329,22 @@ export class CommentPlugin extends ConverterComponent {
         const signatures = reflection.getAllSignatures();
         if (signatures.length) {
             const comment = reflection.comment;
-            if (comment && comment.hasTag("returns")) {
-                comment.returns = comment.getTag("returns")!.text;
-                comment.removeTags("returns");
+            if (comment) {
+                const returnsTag = comment.getTag("returns");
+                if (returnsTag) {
+                    comment.returns = returnsTag.text;
+                    comment.removeTags("returns");
+                }
             }
 
             signatures.forEach((signature) => {
                 let childComment = signature.comment;
-                if (childComment && childComment.hasTag("returns")) {
-                    childComment.returns = childComment.getTag("returns")!.text;
-                    childComment.removeTags("returns");
+                if (childComment) {
+                    const returnsTag = childComment.getTag("returns");
+                    if (returnsTag) {
+                        childComment.returns = returnsTag.text;
+                        childComment.removeTags("returns");
+                    }
                 }
 
                 if (comment) {

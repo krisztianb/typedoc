@@ -88,10 +88,11 @@ export class ImplementsPlugin extends ConverterComponent {
                     interfaceMember.signatures &&
                     classMember.signatures
                 ) {
+                    const member = classMember;
                     interfaceMember.signatures.forEach(
                         (interfaceSignature: SignatureReflection) => {
                             const interfaceParameters = interfaceSignature.getParameterTypes();
-                            (classMember!.signatures || []).forEach(
+                            (member.signatures ?? []).forEach(
                                 (classSignature: SignatureReflection) => {
                                     if (
                                         Type.isTypeListEqual(

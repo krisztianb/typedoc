@@ -46,11 +46,12 @@ export class VariableConverter extends ConverterNodeComponent<
 
     /**
      * Analyze the given variable declaration node and create a suitable reflection.
-     * TODO: the type of `node` is incorrect, it should be a union of ts.PropertySignature | ts.PropertyDeclaration | ...
+     * TODO: the type of `node` is incorrect, it should be
+     *       a union of ts.PropertySignature | ts.PropertyDeclaration | ...
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The variable declaration node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     convert(context: Context, node: VarNodeType): Reflection | undefined {
         const comment = createComment(node);
@@ -89,7 +90,7 @@ export class VariableConverter extends ConverterNodeComponent<
                 : ReflectionKind.Variable;
         const variable = createDeclaration(context, node, kind, name);
 
-        // The variable can be null if `excludeNotExported` is `true`
+        // The variable can be undefined if `excludeNotExported` is `true`
         if (variable) {
             switch (kind) {
                 case ReflectionKind.Variable:
@@ -110,52 +111,58 @@ export class VariableConverter extends ConverterNodeComponent<
                     }
                     break;
             }
-        }
 
-        context.withScope(variable, () => {
-            if ("initializer" in node && node.initializer) {
-                switch (node.initializer.kind) {
-                    case ts.SyntaxKind.ArrowFunction:
-                    case ts.SyntaxKind.FunctionExpression:
-                        variable!.kind =
-                            scope.kind & ReflectionKind.ClassOrInterface
-                                ? ReflectionKind.Method
-                                : ReflectionKind.Function;
-                        this.owner.convertNode(context, node.initializer);
-                        break;
-                    case ts.SyntaxKind.ObjectLiteralExpression:
-                        if (
-                            !this.isSimpleObjectLiteral(
-                                <ts.ObjectLiteralExpression>node.initializer
-                            )
-                        ) {
-                            variable!.kind = ReflectionKind.ObjectLiteral;
-                            variable!.type = new IntrinsicType("object");
+            context.withScope(variable, () => {
+                if ("initializer" in node && node.initializer) {
+                    switch (node.initializer.kind) {
+                        case ts.SyntaxKind.ArrowFunction:
+                        case ts.SyntaxKind.FunctionExpression:
+                            variable.kind =
+                                scope.kind & ReflectionKind.ClassOrInterface
+                                    ? ReflectionKind.Method
+                                    : ReflectionKind.Function;
                             this.owner.convertNode(context, node.initializer);
-                        }
-                        break;
-                    default:
-                        variable!.defaultValue = convertDefaultValue(
-                            node as ts.VariableDeclaration
-                        );
+                            break;
+                        case ts.SyntaxKind.ObjectLiteralExpression:
+                            if (
+                                !this.isSimpleObjectLiteral(
+                                    <ts.ObjectLiteralExpression>node.initializer
+                                )
+                            ) {
+                                variable.kind = ReflectionKind.ObjectLiteral;
+                                variable.type = new IntrinsicType("object");
+                                this.owner.convertNode(
+                                    context,
+                                    node.initializer
+                                );
+                            }
+                            break;
+                        default:
+                            variable.defaultValue = convertDefaultValue(
+                                node as ts.VariableDeclaration
+                            );
+                    }
                 }
-            }
 
-            if (
-                variable!.kind === kind ||
-                variable!.kind === ReflectionKind.Event
-            ) {
-                if (isBindingPattern) {
-                    variable!.type = this.owner.convertType(context, node.name);
-                } else {
-                    variable!.type = this.owner.convertType(
-                        context,
-                        (node as ts.VariableDeclaration).type,
-                        context.getTypeAtLocation(node)
-                    );
+                if (
+                    variable.kind === kind ||
+                    variable.kind === ReflectionKind.Event
+                ) {
+                    if (isBindingPattern) {
+                        variable.type = this.owner.convertType(
+                            context,
+                            node.name
+                        );
+                    } else {
+                        variable.type = this.owner.convertType(
+                            context,
+                            (node as ts.VariableDeclaration).type,
+                            context.getTypeAtLocation(node)
+                        );
+                    }
                 }
-            }
-        });
+            });
+        }
 
         return variable;
     }

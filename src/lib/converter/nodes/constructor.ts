@@ -33,7 +33,7 @@ export class ConstructorConverter extends ConverterNodeComponent<
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The constructor declaration node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     convert(
         context: Context,
@@ -55,33 +55,35 @@ export class ConstructorConverter extends ConverterNodeComponent<
             }
         }
 
-        context.withScope(method, () => {
-            if (!hasBody || !method!.signatures) {
-                const name = "new " + parent.name;
-                const signature = createSignature(
-                    context,
-                    node,
-                    name,
-                    ReflectionKind.ConstructorSignature
-                );
-                // If no return type defined, use the parent one.
-                if (!node.type) {
-                    signature.type = new ReferenceType(
-                        parent.name,
-                        ReferenceType.SYMBOL_FQN_RESOLVED,
-                        parent
+        if (method) {
+            context.withScope(method, () => {
+                if (!hasBody || !method.signatures) {
+                    const name = "new " + parent.name;
+                    const signature = createSignature(
+                        context,
+                        node,
+                        name,
+                        ReflectionKind.ConstructorSignature
+                    );
+                    // If no return type defined, use the parent one.
+                    if (!node.type) {
+                        signature.type = new ReferenceType(
+                            parent.name,
+                            ReferenceType.SYMBOL_FQN_RESOLVED,
+                            parent
+                        );
+                    }
+                    method.signatures = method.signatures ?? [];
+                    method.signatures.push(signature);
+                } else {
+                    context.trigger(
+                        Converter.EVENT_FUNCTION_IMPLEMENTATION,
+                        method,
+                        node
                     );
                 }
-                method!.signatures = method!.signatures || [];
-                method!.signatures.push(signature);
-            } else {
-                context.trigger(
-                    Converter.EVENT_FUNCTION_IMPLEMENTATION,
-                    method!,
-                    node
-                );
-            }
-        });
+            });
+        }
 
         return method;
     }

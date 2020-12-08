@@ -32,7 +32,7 @@ export class ClassConverter extends ConverterNodeComponent<
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The class declaration node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     convert(
         context: Context,
@@ -55,90 +55,97 @@ export class ClassConverter extends ConverterNodeComponent<
             }
         }
 
-        context.withScope(reflection, node.typeParameters, () => {
-            if (node.members) {
-                node.members.forEach((member) => {
-                    const child = this.owner.convertNode(context, member);
-                    // class Foo { #foo = 1 }
-                    if (
-                        child &&
-                        member.name &&
-                        ts.isPrivateIdentifier(member.name)
-                    ) {
-                        child.flags.setFlag(ReflectionFlag.Private, true);
-                    }
-                });
-            }
+        if (reflection) {
+            const ref = reflection;
 
-            const extendsClause = toArray(node.heritageClauses).find(
-                (h) => h.token === ts.SyntaxKind.ExtendsKeyword
-            );
-            if (extendsClause) {
-                const baseType = extendsClause.types[0];
-                const type = context.getTypeAtLocation(baseType);
-                if (!context.isInherit) {
-                    if (!reflection!.extendedTypes) {
-                        reflection!.extendedTypes = [];
-                    }
-                    const convertedType = this.owner.convertType(
-                        context,
-                        baseType,
-                        type
-                    );
-                    if (convertedType) {
-                        reflection!.extendedTypes.push(convertedType);
-                    }
-                }
-
-                if (type) {
-                    const typesToInheritFrom: ts.Type[] = type.isIntersection()
-                        ? type.types
-                        : [type];
-
-                    // Get type parameters of all types
-                    let typeParams: ts.TypeParameterDeclaration[] = [];
-                    for (const typeToInheritFrom of typesToInheritFrom) {
-                        typeParams = typeParams.concat(
-                            getTypeParametersOfType(typeToInheritFrom)
-                        );
-                    }
-
-                    const typeArguments =
-                        typeParams.length > 0
-                            ? getTypeArgumentsWithDefaults(
-                                  typeParams,
-                                  baseType.typeArguments
-                              )
-                            : undefined;
-
-                    typesToInheritFrom.forEach((typeToInheritFrom: ts.Type) => {
-                        // TODO: The TS declaration file claims that:
-                        // 1. type.symbol is non-nullable
-                        // 2. symbol.declarations is non-nullable
-                        // These are both incorrect, GH#1207 for #2 and existing tests for #1.
-                        // Figure out why this is the case and document.
-                        typeToInheritFrom.symbol?.declarations?.forEach(
-                            (declaration) => {
-                                context.inherit(declaration, typeArguments);
-                            }
-                        );
+            context.withScope(ref, node.typeParameters, () => {
+                if (node.members) {
+                    node.members.forEach((member) => {
+                        const child = this.owner.convertNode(context, member);
+                        // class Foo { #foo = 1 }
+                        if (
+                            child &&
+                            member.name &&
+                            ts.isPrivateIdentifier(member.name)
+                        ) {
+                            child.flags.setFlag(ReflectionFlag.Private, true);
+                        }
                     });
                 }
-            }
 
-            const implementsClause = toArray(node.heritageClauses).find(
-                (h) => h.token === ts.SyntaxKind.ImplementsKeyword
-            );
-            if (implementsClause) {
-                const implemented = this.owner.convertTypes(
-                    context,
-                    implementsClause.types
+                const extendsClause = toArray(node.heritageClauses).find(
+                    (h) => h.token === ts.SyntaxKind.ExtendsKeyword
                 );
-                reflection!.implementedTypes = (
-                    reflection!.implementedTypes || []
-                ).concat(implemented);
-            }
-        });
+                if (extendsClause) {
+                    const baseType = extendsClause.types[0];
+                    const type = context.getTypeAtLocation(baseType);
+                    if (!context.isInherit) {
+                        ref.extendedTypes ??= [];
+                        const convertedType = this.owner.convertType(
+                            context,
+                            baseType,
+                            type
+                        );
+                        if (convertedType) {
+                            ref.extendedTypes.push(convertedType);
+                        }
+                    }
+
+                    if (type) {
+                        const typesToInheritFrom: ts.Type[] = type.isIntersection()
+                            ? type.types
+                            : [type];
+
+                        // Get type parameters of all types
+                        let typeParams: ts.TypeParameterDeclaration[] = [];
+                        for (const typeToInheritFrom of typesToInheritFrom) {
+                            typeParams = typeParams.concat(
+                                getTypeParametersOfType(typeToInheritFrom)
+                            );
+                        }
+
+                        const typeArguments =
+                            typeParams.length > 0
+                                ? getTypeArgumentsWithDefaults(
+                                      typeParams,
+                                      baseType.typeArguments
+                                  )
+                                : undefined;
+
+                        typesToInheritFrom.forEach(
+                            (typeToInheritFrom: ts.Type) => {
+                                // TODO: The TS declaration file claims that:
+                                // 1. type.symbol is non-nullable
+                                // 2. symbol.declarations is non-nullable
+                                // These are both incorrect, GH#1207 for #2 and existing tests for #1.
+                                // Figure out why this is the case and document.
+                                typeToInheritFrom.symbol?.declarations?.forEach(
+                                    (declaration) => {
+                                        context.inherit(
+                                            declaration,
+                                            typeArguments
+                                        );
+                                    }
+                                );
+                            }
+                        );
+                    }
+                }
+
+                const implementsClause = toArray(node.heritageClauses).find(
+                    (h) => h.token === ts.SyntaxKind.ImplementsKeyword
+                );
+                if (implementsClause) {
+                    const implemented = this.owner.convertTypes(
+                        context,
+                        implementsClause.types
+                    );
+                    ref.implementedTypes = (ref.implementedTypes ?? []).concat(
+                        implemented
+                    );
+                }
+            });
+        }
 
         return reflection;
     }

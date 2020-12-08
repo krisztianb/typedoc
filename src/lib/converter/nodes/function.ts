@@ -24,7 +24,7 @@ export class FunctionConverter extends ConverterNodeComponent<
      *
      * @param context  The context object describing the current state the converter is in.
      * @param node     The function declaration node that should be analyzed.
-     * @return The resulting reflection or NULL.
+     * @return The resulting reflection or UNDEFINED.
      */
     convert(
         context: Context,
@@ -36,37 +36,38 @@ export class FunctionConverter extends ConverterNodeComponent<
                 ? ReflectionKind.Method
                 : ReflectionKind.Function;
         const hasBody = !!node.body;
-        const method = createDeclaration(context, node, kind);
+        const method = createDeclaration(context, node, kind); // child inheriting will return undefined
 
-        if (
-            method && // child inheriting will return null on createDeclaration
-            kind & ReflectionKind.Method &&
-            node.modifiers &&
-            node.modifiers.some((m) => m.kind === ts.SyntaxKind.AbstractKeyword)
-        ) {
-            method.setFlag(ReflectionFlag.Abstract, true);
-        }
-
-        context.withScope(method, () => {
-            if (!hasBody || !method!.signatures) {
-                const signature = createSignature(
-                    context,
-                    <ts.SignatureDeclaration>node,
-                    method!.name,
-                    ReflectionKind.CallSignature
-                );
-                if (!method!.signatures) {
-                    method!.signatures = [];
-                }
-                method!.signatures.push(signature);
-            } else {
-                context.trigger(
-                    Converter.EVENT_FUNCTION_IMPLEMENTATION,
-                    method!,
-                    <ts.Node>node
-                );
+        if (method) {
+            if (
+                kind & ReflectionKind.Method &&
+                node.modifiers &&
+                node.modifiers.some(
+                    (m) => m.kind === ts.SyntaxKind.AbstractKeyword
+                )
+            ) {
+                method.setFlag(ReflectionFlag.Abstract, true);
             }
-        });
+
+            context.withScope(method, () => {
+                if (!hasBody || !method.signatures) {
+                    const signature = createSignature(
+                        context,
+                        <ts.SignatureDeclaration>node,
+                        method.name,
+                        ReflectionKind.CallSignature
+                    );
+                    method.signatures ??= [];
+                    method.signatures.push(signature);
+                } else {
+                    context.trigger(
+                        Converter.EVENT_FUNCTION_IMPLEMENTATION,
+                        method,
+                        <ts.Node>node
+                    );
+                }
+            });
+        }
 
         return method;
     }
