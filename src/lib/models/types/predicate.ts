@@ -62,17 +62,18 @@ export class PredicateType extends Type {
             return false;
         }
 
-        if (!this.targetType && type.targetType) {
-            return false;
-        }
-        if (this.targetType && !type.targetType) {
-            return false;
-        }
+        const targetTypesAreEqual =
+            (!this.targetType && !type.targetType) ||
+            (this.targetType &&
+                type.targetType &&
+                this.targetType.equals(type.targetType))
+                ? true
+                : false;
 
         return (
             this.name === type.name &&
             this.asserts === type.asserts &&
-            (this.targetType?.equals(type.targetType!) ?? true)
+            targetTypesAreEqual
         );
     }
 

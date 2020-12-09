@@ -94,10 +94,13 @@ describe("Renderer", function () {
 
     it("renders basic example", function () {
         this.timeout(0);
-        const result = app.generateDocs(project!, out);
-        Assert(result === true, "Application.generateDocs returned errors");
+        if (project) {
+            const result = app.generateDocs(project, out);
+            Assert(result === true, "Application.generateDocs returned errors");
 
-        FS.removeSync(Path.join(out, "assets"));
-        compareDirectories(Path.join(__dirname, "renderer", "specs"), out);
+            FS.removeSync(Path.join(out, "assets"));
+            compareDirectories(Path.join(__dirname, "renderer", "specs"), out);
+        }
+        throw new Error("Can't render docs without a project reflection");
     });
 });

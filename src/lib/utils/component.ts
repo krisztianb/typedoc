@@ -264,14 +264,16 @@ export abstract class ChildableComponent<
     }
 
     removeComponent(name: string): C | undefined {
-        const component = (this._componentChildren || {})[name];
-        if (component) {
-            delete this._componentChildren![name];
-            component.stopListening();
-            this.bubble(
-                new ComponentEvent(ComponentEvent.REMOVED, this, component)
-            );
-            return component;
+        if (this._componentChildren) {
+            const component = this._componentChildren[name];
+            if (component) {
+                delete this._componentChildren[name];
+                component.stopListening();
+                this.bubble(
+                    new ComponentEvent(ComponentEvent.REMOVED, this, component)
+                );
+                return component;
+            }
         }
     }
 
