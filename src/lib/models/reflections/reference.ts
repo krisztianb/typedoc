@@ -57,10 +57,10 @@ export class ReferenceReflection extends DeclarationReflection {
      * To fully resolve any references, use [[tryGetTargetReflectionDeep]].
      */
     tryGetTargetReflection(): Reflection | undefined {
-        this._ensureProject();
+        const project = this._getProjectOrFail();
         this._ensureResolved(false);
         return this._state[0] === ReferenceState.Resolved
-            ? this._project!.getReflectionById(this._state[1])
+            ? project.getReflectionById(this._state[1])
             : undefined;
     }
 
@@ -80,18 +80,18 @@ export class ReferenceReflection extends DeclarationReflection {
      * Gets the reflection that is referenced. This may be another reference reflection.
      * To fully resolve any references, use [[getTargetReflectionDeep]].
      */
-    getTargetReflection(): Reflection {
-        this._ensureProject();
+    getTargetReflection(): Reflection | undefined {
+        const project = this._getProjectOrFail();
         this._ensureResolved(true);
 
-        return this._project!.getReflectionById(this._state[1] as number)!;
+        return project.getReflectionById(this._state[1] as number);
     }
 
     /**
      * Gets the reflection that is referenced, this will fully resolve references.
      * To only resolve one reference, use [[getTargetReflection]].
      */
-    getTargetReflectionDeep(): Reflection {
+    getTargetReflectionDeep(): Reflection | undefined {
         let result = this.getTargetReflection();
         while (result instanceof ReferenceReflection) {
             result = result.getTargetReflection();
@@ -101,7 +101,8 @@ export class ReferenceReflection extends DeclarationReflection {
 
     private _ensureResolved(throwIfFail: boolean) {
         if (this._state[0] === ReferenceState.Unresolved) {
-            const target = this._project!.getReflectionFromFQN(this._state[1]);
+            const project = this._getProjectOrFail();
+            const target = project.getReflectionFromFQN(this._state[1]);
             if (!target) {
                 if (throwIfFail) {
                     throw new Error(
@@ -114,21 +115,21 @@ export class ReferenceReflection extends DeclarationReflection {
         }
     }
 
-    private _ensureProject() {
-        if (this._project) {
-            return;
+    private _getProjectOrFail(): ProjectReflection {
+        if (!this._project) {
+            let project = this.parent;
+            while (project && !project.isProject()) {
+                project = project.parent;
+            }
+            this._project = project;
         }
-
-        let project = this.parent;
-        while (project && !project.isProject()) {
-            project = project.parent;
-        }
-        this._project = project;
 
         if (!this._project) {
             throw new Error(
                 "Reference reflection has no project and is unable to resolve."
             );
         }
+
+        return this._project;
     }
 }
