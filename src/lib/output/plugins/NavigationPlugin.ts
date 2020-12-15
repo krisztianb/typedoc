@@ -33,7 +33,7 @@ export class NavigationPlugin extends RendererComponent {
      * @param event  An event object describing the current render operation.
      */
     private onBeginRenderer(event: RendererEvent) {
-        this.navigation = this.owner.theme!.getNavigation(event.project);
+        this.navigation = this.owner.theme.getNavigation(event.project);
     }
 
     /**
@@ -61,9 +61,13 @@ export class NavigationPlugin extends RendererComponent {
         })(this.navigation);
 
         currentItems.forEach((item: NavigationItem | undefined) => {
-            item!.isCurrent = true;
+            if (!item) {
+                return;
+            }
 
-            let depth = item!.isGlobals ? -1 : 0;
+            item.isCurrent = true;
+
+            let depth = item.isGlobals ? -1 : 0;
             let count = 1;
             while (item) {
                 item.isInPath = true;

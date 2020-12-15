@@ -99,7 +99,7 @@ export class MarkedLinksPlugin extends ContextAwareRendererComponent {
     /**
      * Format a link with the given text and target.
      *
-     * @param original   The original link string, will be returned if the target cannot be resolved..
+     * @param original   The original link string, will be returned if the target cannot be resolved.
      * @param target     The link target.
      * @param caption    The caption of the link.
      * @param monospace  Whether to use monospace formatting or not.
@@ -130,8 +130,9 @@ export class MarkedLinksPlugin extends ContextAwareRendererComponent {
                     target = this.getRelativeUrl(reflection.url);
                 }
             } else {
-                const fullName = (this.reflection ||
-                    this.project)!.getFullName();
+                const fullName =
+                    (this.reflection || this.project)?.getFullName() ??
+                    "unknown";
                 this.warnings.push(`In ${fullName}: ${original}`);
                 return original;
             }

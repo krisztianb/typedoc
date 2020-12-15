@@ -43,7 +43,7 @@ export class AssetsPlugin extends RendererComponent {
             fromDefault = undefined;
         }
 
-        const from = Path.join(this.owner.theme!.basePath, "assets");
+        const from = Path.join(this.owner.theme.basePath, "assets");
         if (from !== fromDefault && FS.existsSync(from)) {
             FS.copySync(from, to);
         }
