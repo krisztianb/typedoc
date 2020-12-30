@@ -129,60 +129,25 @@ export class DefaultTheme extends Theme {
      */
     getUrls(project: ProjectReflection): UrlMapping[] {
         const urls: UrlMapping[] = [];
-        const entryPoint = this.getEntryPoint(project);
 
         if (this.application.options.getValue("readme") === "none") {
-            entryPoint.url = "index.html";
-            urls.push(
-                new UrlMapping("index.html", entryPoint, "reflection.hbs")
-            );
+            project.url = "index.html";
+            urls.push(new UrlMapping("index.html", project, "reflection.hbs"));
         } else {
-            entryPoint.url = "globals.html";
+            project.url = "modules.html";
             urls.push(
-                new UrlMapping("globals.html", entryPoint, "reflection.hbs")
+                new UrlMapping("modules.html", project, "reflection.hbs")
             );
             urls.push(new UrlMapping("index.html", project, "index.hbs"));
         }
 
-        if (entryPoint.children) {
-            entryPoint.children.forEach((child: Reflection) => {
-                if (child instanceof DeclarationReflection) {
-                    DefaultTheme.buildUrls(child, urls);
-                }
-            });
-        }
+        project.children?.forEach((child: Reflection) => {
+            if (child instanceof DeclarationReflection) {
+                DefaultTheme.buildUrls(child, urls);
+            }
+        });
 
         return urls;
-    }
-
-    /**
-     * Return the entry point of the documentation.
-     *
-     * @param project  The current project.
-     * @returns The reflection that should be used as the entry point.
-     */
-    getEntryPoint(project: ProjectReflection): ContainerReflection {
-        const entryPoint = this.owner.entryPoint;
-        if (entryPoint) {
-            const reflection = project.getChildByName(entryPoint);
-            if (reflection) {
-                if (reflection instanceof ContainerReflection) {
-                    return reflection;
-                } else {
-                    this.application.logger.warn(
-                        "The given entry point `%s` is not a container.",
-                        entryPoint
-                    );
-                }
-            } else {
-                this.application.logger.warn(
-                    "The entry point `%s` could not be found.",
-                    entryPoint
-                );
-            }
-        }
-
-        return project;
     }
 
     /**
@@ -192,8 +157,11 @@ export class DefaultTheme extends Theme {
      * @returns        The root navigation item.
      */
     getNavigation(project: ProjectReflection): NavigationItem {
-        const entryPoint = this.getEntryPoint(project);
-        const builder = new NavigationBuilder(project, entryPoint);
+        const builder = new NavigationBuilder(
+            project,
+            project,
+            this.application.options.getValue("entryPoints").length > 1
+        );
         return builder.build(
             this.application.options.getValue("readme") !== "none"
         );
@@ -254,7 +222,7 @@ export class DefaultTheme extends Theme {
     }
 
     /**
-     * Return the template mapping fore the given reflection.
+     * Return the template mapping for the given reflection.
      *
      * @param reflection  The reflection whose mapping should be resolved.
      * @returns           The found mapping or undefined if no mapping could be found.
@@ -316,10 +284,7 @@ export class DefaultTheme extends Theme {
      */
     static applyAnchorUrl(reflection: Reflection, container: Reflection) {
         if (!reflection.url || !DefaultTheme.URL_PREFIX.test(reflection.url)) {
-            let anchor = DefaultTheme.getUrl(reflection, container, ".");
-            if (reflection["isStatic"]) {
-                anchor = "static-" + anchor;
-            }
+            const anchor = DefaultTheme.getUrl(reflection, container, ".");
 
             reflection.url = container.url + "#" + anchor;
             reflection.anchor = anchor;
@@ -390,9 +355,6 @@ export class DefaultTheme extends Theme {
         if (reflection.flags.isExternal) {
             classes.push("tsd-is-external");
         }
-        if (!reflection.flags.isExported) {
-            classes.push("tsd-is-not-exported");
-        }
 
         reflection.cssClasses = classes.join(" ");
     }
@@ -417,9 +379,6 @@ export class DefaultTheme extends Theme {
         if (group.allChildrenAreExternal) {
             classes.push("tsd-is-external");
         }
-        if (!group.someChildrenAreExported) {
-            classes.push("tsd-is-not-exported");
-        }
 
         group.cssClasses = classes.join(" ");
     }
@@ -430,7 +389,7 @@ export class DefaultTheme extends Theme {
      */
     static toStyleClass(str: string) {
         return str
-            .replace(/(\w)([A-Z])/g, (m, m1, m2) => m1 + "-" + m2)
+            .replace(/(\w)([A-Z])/g, (_m, m1, m2) => m1 + "-" + m2)
             .toLowerCase();
     }
 }
@@ -438,26 +397,24 @@ export class DefaultTheme extends Theme {
 export class NavigationBuilder {
     constructor(
         private project: ProjectReflection,
-        private entryPoint: ContainerReflection
+        private entryPoint: ContainerReflection,
+        private multipleEntryPoints: boolean
     ) {}
 
     /**
      * Build the navigation structure.
      *
-     * @param hasSeparateGlobals  Has the project a separated globals.html file?
-     * @return                    The root node of the generated navigation structure.
+     * @param hasReadmeFile True if the project has a readme
+     * @returns The root node of the generated navigation structure.
      */
-    build(hasSeparateGlobals: boolean): NavigationItem {
+    build(hasReadmeFile: boolean): NavigationItem {
         const root = new NavigationItem("Index", "index.html");
-
-        if (this.entryPoint === this.project) {
-            const globals = new NavigationItem(
-                "Globals",
-                hasSeparateGlobals ? "globals.html" : "index.html",
-                root
-            );
-            globals.isGlobals = true;
-        }
+        const sidebarRoot = new NavigationItem(
+            this.multipleEntryPoints ? "Modules" : "Exports",
+            hasReadmeFile ? "modules.html" : "index.html",
+            root
+        );
+        sidebarRoot.isModules = true;
 
         const modules: DeclarationReflection[] = [];
         this.project

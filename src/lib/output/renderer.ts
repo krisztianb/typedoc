@@ -22,6 +22,7 @@ import { DefaultTheme } from "./themes/DefaultTheme";
 import { RendererComponent } from "./components";
 import { Component, ChildableComponent } from "../utils/component";
 import { BindOption } from "../utils";
+import { loadHighlighter } from "../utils/highlighter";
 
 /**
  * The renderer processes a [[ProjectReflection]] using a [[BaseTheme]] instance and writes
@@ -79,18 +80,8 @@ export class Renderer extends ChildableComponent<
     @BindOption("hideGenerator")
     hideGenerator!: boolean;
 
-    @BindOption("entryPoint")
-    entryPoint!: string;
-
     @BindOption("toc")
     toc!: string[];
-
-    /**
-     * Create a new Renderer instance.
-     *
-     * @param application  The application this dispatcher is attached to.
-     */
-    initialize() {}
 
     /**
      * Render the given project reflection to the specified output directory.
@@ -98,7 +89,11 @@ export class Renderer extends ChildableComponent<
      * @param project  The project that should be rendered.
      * @param outputDirectory  The path of the directory the documentation should be rendered to.
      */
-    render(project: ProjectReflection, outputDirectory: string) {
+    async render(
+        project: ProjectReflection,
+        outputDirectory: string
+    ): Promise<void> {
+        await loadHighlighter();
         if (
             !this.prepareTheme() ||
             !this.prepareOutputDirectory(outputDirectory)
@@ -280,6 +275,14 @@ export class Renderer extends ChildableComponent<
         }
 
         return true;
+    }
+
+    // This exists so that the resources can get the directory
+    // without importing this file. Normally, I'd just directly
+    // get the path, but typedoc-plugin-markdown overrides the
+    // static version, and I don't need to break that yet...
+    getDefaultTheme() {
+        return Renderer.getDefaultTheme();
     }
 
     /**

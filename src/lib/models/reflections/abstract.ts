@@ -35,44 +35,65 @@ export function resetReflectionID() {
  * Defines the available reflection kinds.
  */
 export enum ReflectionKind {
-    Global = 0,
-    Module = 1 << 0,
-    Namespace = 1 << 1,
-    Enum = 1 << 2,
-    EnumMember = 1 << 4,
-    Variable = 1 << 5,
-    Function = 1 << 6,
-    Class = 1 << 7,
-    Interface = 1 << 8,
-    Constructor = 1 << 9,
-    Property = 1 << 10,
-    Method = 1 << 11,
-    CallSignature = 1 << 12,
-    IndexSignature = 1 << 13,
-    ConstructorSignature = 1 << 14,
-    Parameter = 1 << 15,
-    TypeLiteral = 1 << 16,
-    TypeParameter = 1 << 17,
-    Accessor = 1 << 18,
-    GetSignature = 1 << 19,
-    SetSignature = 1 << 20,
-    ObjectLiteral = 1 << 21,
-    TypeAlias = 1 << 22,
-    Event = 1 << 23,
-    Reference = 1 << 24,
+    Project = 0x0,
+    Module = 0x1,
+    Namespace = 0x2,
+    Enum = 0x4,
+    // what happened to 8?
+    EnumMember = 0x10,
+    Variable = 0x20,
+    Function = 0x40,
+    Class = 0x80,
+    Interface = 0x100,
+    Constructor = 0x200,
+    Property = 0x400,
+    Method = 0x800,
+    CallSignature = 0x1000,
+    IndexSignature = 0x2000,
+    ConstructorSignature = 0x4000,
+    Parameter = 0x8000,
+    TypeLiteral = 0x10000,
+    TypeParameter = 0x20000,
+    Accessor = 0x40000,
+    GetSignature = 0x80000,
+    SetSignature = 0x100000,
+    ObjectLiteral = 0x200000,
+    TypeAlias = 0x400000,
+    Event = 0x800000,
+    Reference = 0x1000000,
+}
 
-    ClassOrInterface = Class | Interface,
-    VariableOrProperty = Variable | Property,
-    FunctionOrMethod = ReflectionKind.Function | Method,
-    ClassMember = Accessor | Constructor | Method | Property | Event,
-    SomeSignature = CallSignature |
-        IndexSignature |
-        ConstructorSignature |
-        GetSignature |
-        SetSignature,
-    SomeModule = Namespace | Module,
-    SomeType = Interface | TypeLiteral | TypeParameter | TypeAlias,
-    SomeValue = Variable | Function | ObjectLiteral,
+export namespace ReflectionKind {
+    export const All = ReflectionKind.Reference * 2 - 1;
+
+    export const ClassOrInterface =
+        ReflectionKind.Class | ReflectionKind.Interface;
+    export const VariableOrProperty =
+        ReflectionKind.Variable | ReflectionKind.Property;
+    export const FunctionOrMethod =
+        ReflectionKind.Function | ReflectionKind.Method;
+    export const ClassMember =
+        ReflectionKind.Accessor |
+        ReflectionKind.Constructor |
+        ReflectionKind.Method |
+        ReflectionKind.Property |
+        ReflectionKind.Event;
+    export const SomeSignature =
+        ReflectionKind.CallSignature |
+        ReflectionKind.IndexSignature |
+        ReflectionKind.ConstructorSignature |
+        ReflectionKind.GetSignature |
+        ReflectionKind.SetSignature;
+    export const SomeModule = ReflectionKind.Namespace | ReflectionKind.Module;
+    export const SomeType =
+        ReflectionKind.Interface |
+        ReflectionKind.TypeLiteral |
+        ReflectionKind.TypeParameter |
+        ReflectionKind.TypeAlias;
+    export const SomeValue =
+        ReflectionKind.Variable |
+        ReflectionKind.Function |
+        ReflectionKind.ObjectLiteral;
 }
 
 export enum ReflectionFlag {
@@ -81,17 +102,15 @@ export enum ReflectionFlag {
     Protected = 2,
     Public = 4,
     Static = 8,
-    Exported = 16,
-    ExportAssignment = 32,
-    External = 64,
-    Optional = 128,
-    DefaultValue = 256,
-    Rest = 512,
-    ConstructorProperty = 1024,
-    Abstract = 2048,
-    Const = 4096,
-    Let = 8192,
-    Readonly = 16384,
+    ExportAssignment = 16,
+    External = 32,
+    Optional = 64,
+    DefaultValue = 128,
+    Rest = 256,
+    Abstract = 512,
+    Const = 1024,
+    Let = 2048,
+    Readonly = 4096,
 }
 
 const relevantFlags: ReflectionFlag[] = [
@@ -147,24 +166,6 @@ export class ReflectionFlags extends Array<string> {
     }
 
     /**
-     * True if the reflection is exported from its containing declaration. Note that if a file
-     * has no imports or exports, then TS assumes that the file is in a global scope and *all*
-     * declarations are exported.
-     * ```ts
-     * // a.ts
-     * namespace A { // isExported = false
-     *   export const b = 1 // isExported = true, even though the container is false.
-     * }
-     * export const b = 2 // isExported = true
-     * // b.ts
-     * const c = 1 // isExported = true, no imports/exports
-     * ```
-     */
-    get isExported(): boolean {
-        return this.hasFlag(ReflectionFlag.Exported);
-    }
-
-    /**
      * Is this a declaration from an external document?
      */
     get isExternal(): boolean {
@@ -189,10 +190,6 @@ export class ReflectionFlags extends Array<string> {
 
     get hasExportAssignment(): boolean {
         return this.hasFlag(ReflectionFlag.ExportAssignment);
-    }
-
-    get isConstructorProperty(): boolean {
-        return this.hasFlag(ReflectionFlag.ConstructorProperty);
     }
 
     get isAbstract(): boolean {
@@ -250,7 +247,7 @@ export class ReflectionFlags extends Array<string> {
     private setSingleFlag(flag: ReflectionFlag, set: boolean) {
         const name = ReflectionFlag[flag].replace(
             /(.)([A-Z])/g,
-            (m, a, b) => a + " " + b.toLowerCase()
+            (_m, a, b) => a + " " + b.toLowerCase()
         );
         if (!set && this.hasFlag(flag)) {
             if (relevantFlags.includes(flag)) {
@@ -352,6 +349,7 @@ export abstract class Reflection {
 
     /**
      * The human readable string representation of the kind of this reflection.
+     * Set during the resolution phase by GroupPlugin
      */
     kindString?: string;
 
@@ -427,6 +425,11 @@ export abstract class Reflection {
         this.name = name;
         this.originalName = name;
         this.kind = kind;
+
+        // If our parent is external, we are too.
+        if (parent?.flags.isExternal) {
+            this.setFlag(ReflectionFlag.External);
+        }
     }
 
     /**
@@ -569,8 +572,9 @@ export abstract class Reflection {
      *
      * @param callback  The callback function that should be applied for each child reflection.
      */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- This abstract class defines the interface.
-    traverse(callback: TraverseCallback) {}
+    traverse(_callback: TraverseCallback) {
+        // do nothing here, overridden by child classes
+    }
 
     /**
      * Return a string representation of this reflection.

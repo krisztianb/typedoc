@@ -3,39 +3,35 @@ export {
     SerializerComponent,
     TypeSerializerComponent,
 } from "./components";
-
+export { SerializeEvent } from "./events";
 export { Serializer } from "./serializer";
-
 export {
-    SourceReferenceContainerSerializer,
-    SourceReferenceWrapper,
+    ArrayTypeSerializer,
+    CommentSerializer,
+    CommentTagSerializer,
+    ContainerReflectionSerializer,
+    DeclarationReflectionSerializer,
     DecoratorContainerSerializer,
     DecoratorWrapper,
-    ContainerReflectionSerializer,
-    CommentTagSerializer,
-    CommentSerializer,
-    ArrayTypeSerializer,
-    DeclarationReflectionSerializer,
     IntersectionTypeSerializer,
     IntrinsicTypeSerializer,
+    LiteralTypeSerializer,
     ParameterReflectionSerializer,
-    ProjectReflectionSerializer,
     ReferenceTypeSerializer,
     ReflectionCategorySerializer,
     ReflectionGroupSerializer,
     ReflectionSerializer,
     ReflectionTypeSerializer,
     SignatureReflectionSerializer,
-    StringLiteralTypeSerializer,
+    SourceReferenceContainerSerializer,
+    SourceReferenceWrapper,
     TupleTypeSerializer,
-    TypeSerializer,
-    TypeParameterReflectionSerializer,
     TypeOperatorTypeSerializer,
+    TypeParameterReflectionSerializer,
     TypeParameterTypeSerializer,
+    TypeSerializer,
     UnknownTypeSerializer,
 } from "./serializers";
-
-export { SerializeEvent } from "./events";
+export { JSONOutput };
 
 import * as JSONOutput from "./schema";
-export { JSONOutput };

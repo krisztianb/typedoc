@@ -1,11 +1,11 @@
-import { deepStrictEqual as equal } from "assert";
+import { deepStrictEqual as equal, ok } from "assert";
 
 import { Options, Logger } from "../../../../lib/utils";
 import { ArgumentsReader } from "../../../../lib/utils/options/readers";
 import {
     ParameterType,
-    SourceFileMode,
     NumberDeclarationOption,
+    MapDeclarationOption,
 } from "../../../../lib/utils/options";
 
 describe("Options - ArgumentsReader", () => {
@@ -18,14 +18,26 @@ describe("Options - ArgumentsReader", () => {
                 name: "numOption";
             }
         ): void;
+        addDeclaration(
+            declaration: Readonly<MapDeclarationOption<number>> & {
+                name: "mapped";
+            }
+        ): void;
         getValue(name: "numOption"): number;
+        getValue(name: "mapped"): number;
     };
     options.addDefaultDeclarations();
     options.addDeclaration({
         name: "numOption",
-        short: "no",
         help: "",
         type: ParameterType.Number,
+    });
+    options.addDeclaration({
+        name: "mapped",
+        type: ParameterType.Map,
+        help: "",
+        map: { a: 1, b: 2 },
+        defaultValue: 3,
     });
 
     function test(name: string, args: string[], cb: () => void) {
@@ -40,14 +52,14 @@ describe("Options - ArgumentsReader", () => {
     }
 
     test("Puts arguments with no flag into inputFiles", ["foo", "bar"], () => {
-        equal(options.getValue("inputFiles"), ["foo", "bar"]);
+        equal(options.getValue("entryPoints"), ["foo", "bar"]);
     });
 
     test("Works with string options", ["--out", "outDir"], () => {
         equal(options.getValue("out"), "outDir");
     });
 
-    test("Works with number options", ["-no", "123"], () => {
+    test("Works with number options", ["-numOption", "123"], () => {
         equal(options.getValue("numOption"), 123);
     });
 
@@ -60,7 +72,7 @@ describe("Options - ArgumentsReader", () => {
         ["--includeVersion", "TrUE"],
         () => {
             equal(options.getValue("includeVersion"), true);
-            equal(options.getValue("inputFiles"), []);
+            equal(options.getValue("entryPoints"), []);
         }
     );
 
@@ -69,7 +81,7 @@ describe("Options - ArgumentsReader", () => {
         ["--includeVersion", "FALse"],
         () => {
             equal(options.getValue("includeVersion"), false);
-            equal(options.getValue("inputFiles"), []);
+            equal(options.getValue("entryPoints"), []);
         }
     );
 
@@ -78,12 +90,12 @@ describe("Options - ArgumentsReader", () => {
         ["--includeVersion", "foo"],
         () => {
             equal(options.getValue("includeVersion"), true);
-            equal(options.getValue("inputFiles"), ["foo"]);
+            equal(options.getValue("entryPoints"), ["foo"]);
         }
     );
 
-    test("Works with map options", ["--mode", "file"], () => {
-        equal(options.getValue("mode"), SourceFileMode.File);
+    test("Works with map options", ["--mapped", "b"], () => {
+        equal(options.getValue("mapped"), 2);
     });
 
     test("Works with mixed options", ["--logger", "word"], () => {
@@ -119,6 +131,23 @@ describe("Options - ArgumentsReader", () => {
             }
         }
         const reader = new ArgumentsReader(1, ["--badOption"]);
+        options.reset();
+        options.addReader(reader);
+        options.read(new TestLogger());
+        options.removeReaderByName(reader.name);
+        equal(check, true, "Reader did not report an error.");
+    });
+
+    it("Warns if option is expecting a value but no value is provided", () => {
+        let check = false;
+        class TestLogger extends Logger {
+            warn(msg: string) {
+                ok(msg.includes("--out"));
+                check = true;
+            }
+        }
+
+        const reader = new ArgumentsReader(1, ["--out"]);
         options.reset();
         options.addReader(reader);
         options.read(new TestLogger());

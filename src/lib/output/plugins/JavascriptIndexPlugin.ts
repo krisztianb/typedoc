@@ -4,6 +4,7 @@ import { Builder, trimmer } from "lunr";
 import {
     DeclarationReflection,
     ProjectReflection,
+    ReflectionKind,
 } from "../../models/reflections/index";
 import { GroupPlugin } from "../../converter/plugins/GroupPlugin";
 import { Component, RendererComponent } from "../components";
@@ -31,12 +32,11 @@ export class JavascriptIndexPlugin extends RendererComponent {
      */
     private onRendererBegin(event: RendererEvent) {
         const rows: any[] = [];
-        const kinds = {};
+        const kinds: { [K in ReflectionKind]?: string } = {};
 
-        for (const key in event.project.reflections) {
-            const reflection: DeclarationReflection = <DeclarationReflection>(
-                event.project.reflections[key]
-            );
+        for (const reflection of event.project.getReflectionsByKind(
+            ReflectionKind.All
+        )) {
             if (!(reflection instanceof DeclarationReflection)) {
                 continue;
             }
@@ -91,7 +91,7 @@ export class JavascriptIndexPlugin extends RendererComponent {
             event.outputDirectory,
             "assets",
             "js",
-            "search.json"
+            "search.js"
         );
         const jsonData = JSON.stringify({
             kinds,
@@ -99,6 +99,6 @@ export class JavascriptIndexPlugin extends RendererComponent {
             index,
         });
 
-        writeFile(jsonFileName, jsonData, false);
+        writeFile(jsonFileName, `window.searchData = ${jsonData}`, false);
     }
 }

@@ -6,13 +6,10 @@
   "children": [
     {
       "id": 1,
-      "name": "\"constructor-type\"",
+      "name": "constructor-type",
       "kind": 1,
       "kindString": "Module",
-      "flags": {
-        "isExported": true
-      },
-      "originalName": "%BASE%/interface/constructor-type.ts",
+      "flags": {},
       "children": [
         {
           "id": 2,
@@ -59,9 +56,8 @@
                     }
                   ],
                   "type": {
-                    "type": "reference",
-                    "id": 2,
-                    "name": "Constructor"
+                    "type": "intrinsic",
+                    "name": "any"
                   }
                 },
                 {
@@ -170,16 +166,170 @@
     },
     {
       "id": 14,
-      "name": "\"interface-empty\"",
+      "name": "index-signature",
       "kind": 1,
       "kindString": "Module",
-      "flags": {
-        "isExported": true
-      },
-      "originalName": "%BASE%/interface/interface-empty.ts",
+      "flags": {},
       "children": [
         {
-          "id": 16,
+          "id": 21,
+          "name": "BothIndex",
+          "kind": 256,
+          "kindString": "Interface",
+          "flags": {},
+          "indexSignature": {
+            "id": 22,
+            "name": "__index",
+            "kind": 8192,
+            "kindString": "Index signature",
+            "flags": {},
+            "parameters": [
+              {
+                "id": 23,
+                "name": "x",
+                "kind": 32768,
+                "flags": {},
+                "type": {
+                  "type": "intrinsic",
+                  "name": "number"
+                }
+              }
+            ],
+            "type": {
+              "type": "literal",
+              "value": 1
+            }
+          }
+        },
+        {
+          "id": 18,
+          "name": "NumIndex",
+          "kind": 256,
+          "kindString": "Interface",
+          "flags": {},
+          "indexSignature": {
+            "id": 19,
+            "name": "__index",
+            "kind": 8192,
+            "kindString": "Index signature",
+            "flags": {},
+            "parameters": [
+              {
+                "id": 20,
+                "name": "x",
+                "kind": 32768,
+                "flags": {},
+                "type": {
+                  "type": "intrinsic",
+                  "name": "number"
+                }
+              }
+            ],
+            "type": {
+              "type": "literal",
+              "value": 1
+            }
+          }
+        },
+        {
+          "id": 15,
+          "name": "StrIndex",
+          "kind": 256,
+          "kindString": "Interface",
+          "flags": {},
+          "indexSignature": {
+            "id": 16,
+            "name": "__index",
+            "kind": 8192,
+            "kindString": "Index signature",
+            "flags": {},
+            "parameters": [
+              {
+                "id": 17,
+                "name": "x",
+                "kind": 32768,
+                "flags": {},
+                "type": {
+                  "type": "intrinsic",
+                  "name": "string"
+                }
+              }
+            ],
+            "type": {
+              "type": "literal",
+              "value": 1
+            }
+          }
+        },
+        {
+          "id": 24,
+          "name": "TypeIndex",
+          "kind": 4194304,
+          "kindString": "Type alias",
+          "flags": {},
+          "type": {
+            "type": "reflection",
+            "declaration": {
+              "id": 25,
+              "name": "__type",
+              "kind": 65536,
+              "kindString": "Type literal",
+              "flags": {},
+              "indexSignature": {
+                "id": 26,
+                "name": "__index",
+                "kind": 8192,
+                "kindString": "Index signature",
+                "flags": {},
+                "parameters": [
+                  {
+                    "id": 27,
+                    "name": "x",
+                    "kind": 32768,
+                    "flags": {},
+                    "type": {
+                      "type": "intrinsic",
+                      "name": "string"
+                    }
+                  }
+                ],
+                "type": {
+                  "type": "literal",
+                  "value": 1
+                }
+              }
+            }
+          }
+        }
+      ],
+      "groups": [
+        {
+          "title": "Interfaces",
+          "kind": 256,
+          "children": [
+            21,
+            18,
+            15
+          ]
+        },
+        {
+          "title": "Type aliases",
+          "kind": 4194304,
+          "children": [
+            24
+          ]
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "interface-empty",
+      "kind": 1,
+      "kindString": "Module",
+      "flags": {},
+      "children": [
+        {
+          "id": 30,
           "name": "ClassImplementingEmptyInterface",
           "kind": 128,
           "kindString": "Class",
@@ -189,7 +339,28 @@
           },
           "children": [
             {
-              "id": 17,
+              "id": 31,
+              "name": "constructor",
+              "kind": 512,
+              "kindString": "Constructor",
+              "flags": {},
+              "signatures": [
+                {
+                  "id": 32,
+                  "name": "new ClassImplementingEmptyInterface",
+                  "kind": 16384,
+                  "kindString": "Constructor signature",
+                  "flags": {},
+                  "type": {
+                    "type": "reference",
+                    "id": 30,
+                    "name": "ClassImplementingEmptyInterface"
+                  }
+                }
+              ]
+            },
+            {
+              "id": 33,
               "name": "name",
               "kind": 1024,
               "kindString": "Property",
@@ -202,7 +373,7 @@
               }
             },
             {
-              "id": 18,
+              "id": 34,
               "name": "goto",
               "kind": 2048,
               "kindString": "Method",
@@ -211,7 +382,7 @@
               },
               "signatures": [
                 {
-                  "id": 19,
+                  "id": 35,
                   "name": "goto",
                   "kind": 4096,
                   "kindString": "Call signature",
@@ -226,30 +397,37 @@
           ],
           "groups": [
             {
+              "title": "Constructors",
+              "kind": 512,
+              "children": [
+                31
+              ]
+            },
+            {
               "title": "Properties",
               "kind": 1024,
               "children": [
-                17
+                33
               ]
             },
             {
               "title": "Methods",
               "kind": 2048,
               "children": [
-                18
+                34
               ]
             }
           ],
           "implementedTypes": [
             {
               "type": "reference",
-              "id": 15,
+              "id": 29,
               "name": "EmptyInterface"
             }
           ]
         },
         {
-          "id": 15,
+          "id": 29,
           "name": "EmptyInterface",
           "kind": 256,
           "kindString": "Interface",
@@ -260,7 +438,7 @@
           "implementedBy": [
             {
               "type": "reference",
-              "id": 16,
+              "id": 30,
               "name": "ClassImplementingEmptyInterface"
             }
           ]
@@ -271,43 +449,38 @@
           "title": "Classes",
           "kind": 128,
           "children": [
-            16
+            30
           ]
         },
         {
           "title": "Interfaces",
           "kind": 256,
           "children": [
-            15
+            29
           ]
         }
       ]
     },
     {
-      "id": 20,
-      "name": "\"interface-implementation\"",
+      "id": 36,
+      "name": "interface-implementation",
       "kind": 1,
       "kindString": "Module",
-      "flags": {
-        "isExported": true
-      },
-      "originalName": "%BASE%/interface/interface-implementation.ts",
+      "flags": {},
       "children": [
         {
-          "id": 21,
+          "id": 37,
           "name": "Forms",
           "kind": 2,
           "kindString": "Namespace",
           "flags": {},
           "children": [
             {
-              "id": 64,
+              "id": 81,
               "name": "EventDispatcher",
               "kind": 128,
               "kindString": "Class",
-              "flags": {
-                "isExported": true
-              },
+              "flags": {},
               "comment": {
                 "shortText": "Implementation of IEventDispatcher",
                 "tags": [
@@ -317,35 +490,59 @@
                   }
                 ]
               },
-              "typeParameter": [
-                {
-                  "id": 65,
-                  "name": "T",
-                  "kind": 131072,
-                  "kindString": "Type parameter",
-                  "flags": {
-                    "isExported": true
-                  }
-                }
-              ],
               "children": [
                 {
-                  "id": 66,
+                  "id": 82,
+                  "name": "constructor",
+                  "kind": 512,
+                  "kindString": "Constructor",
+                  "flags": {},
+                  "signatures": [
+                    {
+                      "id": 83,
+                      "name": "new EventDispatcher",
+                      "kind": 16384,
+                      "kindString": "Constructor signature",
+                      "flags": {},
+                      "typeParameter": [
+                        {
+                          "id": 84,
+                          "name": "T",
+                          "kind": 131072,
+                          "kindString": "Type parameter",
+                          "flags": {}
+                        }
+                      ],
+                      "type": {
+                        "type": "reference",
+                        "id": 81,
+                        "typeArguments": [
+                          {
+                            "type": "reference",
+                            "name": "T"
+                          }
+                        ],
+                        "name": "EventDispatcher"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": 85,
                   "name": "subscriptions",
                   "kind": 1024,
                   "kindString": "Property",
                   "flags": {
-                    "isPrivate": true,
-                    "isExported": true
+                    "isPrivate": true
                   },
                   "type": {
                     "type": "array",
                     "elementType": {
                       "type": "reference",
-                      "id": 26,
+                      "id": 42,
                       "typeArguments": [
                         {
-                          "type": "typeParameter",
+                          "type": "reference",
                           "name": "T"
                         }
                       ],
@@ -354,37 +551,31 @@
                   }
                 },
                 {
-                  "id": 67,
+                  "id": 86,
                   "name": "add",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 68,
+                      "id": 87,
                       "name": "add",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "parameters": [
                         {
-                          "id": 69,
+                          "id": 88,
                           "name": "listener",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
                             "type": "reference",
-                            "id": 22,
+                            "id": 38,
                             "typeArguments": [
                               {
-                                "type": "typeParameter",
+                                "type": "reference",
                                 "name": "T"
                               }
                             ],
@@ -392,13 +583,11 @@
                           }
                         },
                         {
-                          "id": 70,
+                          "id": 89,
                           "name": "filter",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
                             "type": "intrinsic",
                             "name": "any"
@@ -406,13 +595,11 @@
                           "defaultValue": "null"
                         },
                         {
-                          "id": 71,
+                          "id": 90,
                           "name": "priority",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
                             "type": "intrinsic",
                             "name": "number"
@@ -422,10 +609,10 @@
                       ],
                       "type": {
                         "type": "reference",
-                        "id": 26,
+                        "id": 42,
                         "typeArguments": [
                           {
-                            "type": "typeParameter",
+                            "type": "reference",
                             "name": "T"
                           }
                         ],
@@ -433,79 +620,69 @@
                       },
                       "implementationOf": {
                         "type": "reference",
-                        "id": 50,
+                        "id": 66,
                         "name": "EventDispatcherInt.add"
                       }
                     }
                   ],
                   "implementationOf": {
                     "type": "reference",
-                    "id": 49,
+                    "id": 65,
                     "name": "EventDispatcherInt.add"
                   }
                 },
                 {
-                  "id": 78,
+                  "id": 97,
                   "name": "clear",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 79,
+                      "id": 98,
                       "name": "clear",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "type": {
                         "type": "intrinsic",
                         "name": "void"
                       },
                       "implementationOf": {
                         "type": "reference",
-                        "id": 61,
+                        "id": 77,
                         "name": "EventDispatcherInt.clear"
                       }
                     }
                   ],
                   "implementationOf": {
                     "type": "reference",
-                    "id": 60,
+                    "id": 76,
                     "name": "EventDispatcherInt.clear"
                   }
                 },
                 {
-                  "id": 75,
+                  "id": 94,
                   "name": "dispatch",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 76,
+                      "id": 95,
                       "name": "dispatch",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "parameters": [
                         {
-                          "id": 77,
+                          "id": 96,
                           "name": "event",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
-                            "type": "typeParameter",
+                            "type": "reference",
                             "name": "T"
                           }
                         }
@@ -513,86 +690,71 @@
                       "type": {
                         "type": "intrinsic",
                         "name": "boolean"
-                      },
-                      "implementationOf": {
-                        "type": "reference",
-                        "id": 58,
-                        "name": "EventDispatcherInt.dispatch"
                       }
                     }
                   ],
                   "implementationOf": {
                     "type": "reference",
-                    "id": 57,
+                    "id": 73,
                     "name": "EventDispatcherInt.dispatch"
                   }
                 },
                 {
-                  "id": 80,
+                  "id": 99,
                   "name": "hasListeners",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 81,
+                      "id": 100,
                       "name": "hasListeners",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "type": {
                         "type": "intrinsic",
                         "name": "boolean"
                       },
                       "implementationOf": {
                         "type": "reference",
-                        "id": 63,
+                        "id": 79,
                         "name": "EventDispatcherInt.hasListeners"
                       }
                     }
                   ],
                   "implementationOf": {
                     "type": "reference",
-                    "id": 62,
+                    "id": 78,
                     "name": "EventDispatcherInt.hasListeners"
                   }
                 },
                 {
-                  "id": 72,
+                  "id": 91,
                   "name": "remove",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 73,
+                      "id": 92,
                       "name": "remove",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "parameters": [
                         {
-                          "id": 74,
+                          "id": 93,
                           "name": "subscription",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
                             "type": "reference",
-                            "id": 26,
+                            "id": 42,
                             "typeArguments": [
                               {
-                                "type": "typeParameter",
+                                "type": "reference",
                                 "name": "T"
                               }
                             ],
@@ -606,45 +768,61 @@
                       },
                       "implementationOf": {
                         "type": "reference",
-                        "id": 55,
+                        "id": 71,
                         "name": "EventDispatcherInt.remove"
                       }
                     }
                   ],
                   "implementationOf": {
                     "type": "reference",
-                    "id": 54,
+                    "id": 70,
                     "name": "EventDispatcherInt.remove"
                   }
                 }
               ],
               "groups": [
                 {
+                  "title": "Constructors",
+                  "kind": 512,
+                  "children": [
+                    82
+                  ]
+                },
+                {
                   "title": "Properties",
                   "kind": 1024,
                   "children": [
-                    66
+                    85
                   ]
                 },
                 {
                   "title": "Methods",
                   "kind": 2048,
                   "children": [
-                    67,
-                    78,
-                    75,
-                    80,
-                    72
+                    86,
+                    97,
+                    94,
+                    99,
+                    91
                   ]
+                }
+              ],
+              "typeParameter": [
+                {
+                  "id": 101,
+                  "name": "T",
+                  "kind": 131072,
+                  "kindString": "Type parameter",
+                  "flags": {}
                 }
               ],
               "implementedTypes": [
                 {
                   "type": "reference",
-                  "id": 47,
+                  "id": 64,
                   "typeArguments": [
                     {
-                      "type": "typeParameter",
+                      "type": "reference",
                       "name": "T"
                     }
                   ],
@@ -653,47 +831,47 @@
               ]
             },
             {
-              "id": 33,
+              "id": 49,
               "name": "Subscription",
               "kind": 128,
               "kindString": "Class",
               "flags": {},
-              "typeParameter": [
-                {
-                  "id": 34,
-                  "name": "V",
-                  "kind": 131072,
-                  "kindString": "Type parameter",
-                  "flags": {}
-                }
-              ],
               "children": [
                 {
-                  "id": 35,
+                  "id": 50,
                   "name": "constructor",
                   "kind": 512,
                   "kindString": "Constructor",
                   "flags": {},
                   "signatures": [
                     {
-                      "id": 40,
+                      "id": 51,
                       "name": "new Subscription",
                       "kind": 16384,
                       "kindString": "Constructor signature",
                       "flags": {},
+                      "typeParameter": [
+                        {
+                          "id": 52,
+                          "name": "V",
+                          "kind": 131072,
+                          "kindString": "Type parameter",
+                          "flags": {}
+                        }
+                      ],
                       "parameters": [
                         {
-                          "id": 41,
+                          "id": 53,
                           "name": "listener",
                           "kind": 32768,
                           "kindString": "Parameter",
                           "flags": {},
                           "type": {
                             "type": "reference",
-                            "id": 22,
+                            "id": 38,
                             "typeArguments": [
                               {
-                                "type": "typeParameter",
+                                "type": "reference",
                                 "name": "V"
                               }
                             ],
@@ -701,7 +879,7 @@
                           }
                         },
                         {
-                          "id": 42,
+                          "id": 54,
                           "name": "filter",
                           "kind": 32768,
                           "kindString": "Parameter",
@@ -712,7 +890,7 @@
                           }
                         },
                         {
-                          "id": 43,
+                          "id": 55,
                           "name": "priority",
                           "kind": 32768,
                           "kindString": "Parameter",
@@ -723,17 +901,17 @@
                           }
                         },
                         {
-                          "id": 44,
+                          "id": 56,
                           "name": "dispatcher",
                           "kind": 32768,
                           "kindString": "Parameter",
                           "flags": {},
                           "type": {
                             "type": "reference",
-                            "id": 64,
+                            "id": 81,
                             "typeArguments": [
                               {
-                                "type": "typeParameter",
+                                "type": "reference",
                                 "name": "V"
                               }
                             ],
@@ -743,27 +921,32 @@
                       ],
                       "type": {
                         "type": "reference",
-                        "id": 33,
+                        "id": 49,
+                        "typeArguments": [
+                          {
+                            "type": "reference",
+                            "name": "V"
+                          }
+                        ],
                         "name": "Subscription"
                       }
                     }
                   ]
                 },
                 {
-                  "id": 39,
+                  "id": 60,
                   "name": "dispatcher",
                   "kind": 1024,
                   "kindString": "Property",
                   "flags": {
-                    "isPublic": true,
-                    "isConstructorProperty": true
+                    "isPublic": true
                   },
                   "type": {
                     "type": "reference",
-                    "id": 64,
+                    "id": 81,
                     "typeArguments": [
                       {
-                        "type": "typeParameter",
+                        "type": "reference",
                         "name": "V"
                       }
                     ],
@@ -771,13 +954,12 @@
                   }
                 },
                 {
-                  "id": 37,
+                  "id": 58,
                   "name": "filter",
                   "kind": 1024,
                   "kindString": "Property",
                   "flags": {
-                    "isPublic": true,
-                    "isConstructorProperty": true
+                    "isPublic": true
                   },
                   "type": {
                     "type": "intrinsic",
@@ -785,25 +967,24 @@
                   },
                   "implementationOf": {
                     "type": "reference",
-                    "id": 30,
+                    "id": 45,
                     "name": "SubscriptionInt.filter"
                   }
                 },
                 {
-                  "id": 36,
+                  "id": 57,
                   "name": "listener",
                   "kind": 1024,
                   "kindString": "Property",
                   "flags": {
-                    "isPublic": true,
-                    "isConstructorProperty": true
+                    "isPublic": true
                   },
                   "type": {
                     "type": "reference",
-                    "id": 22,
+                    "id": 38,
                     "typeArguments": [
                       {
-                        "type": "typeParameter",
+                        "type": "reference",
                         "name": "V"
                       }
                     ],
@@ -811,18 +992,17 @@
                   },
                   "implementationOf": {
                     "type": "reference",
-                    "id": 28,
+                    "id": 43,
                     "name": "SubscriptionInt.listener"
                   }
                 },
                 {
-                  "id": 38,
+                  "id": 59,
                   "name": "priority",
                   "kind": 1024,
                   "kindString": "Property",
                   "flags": {
-                    "isPublic": true,
-                    "isConstructorProperty": true
+                    "isPublic": true
                   },
                   "type": {
                     "type": "intrinsic",
@@ -830,19 +1010,19 @@
                   },
                   "implementationOf": {
                     "type": "reference",
-                    "id": 29,
+                    "id": 44,
                     "name": "SubscriptionInt.priority"
                   }
                 },
                 {
-                  "id": 45,
+                  "id": 61,
                   "name": "unsubscribe",
                   "kind": 2048,
                   "kindString": "Method",
                   "flags": {},
                   "signatures": [
                     {
-                      "id": 46,
+                      "id": 62,
                       "name": "unsubscribe",
                       "kind": 4096,
                       "kindString": "Call signature",
@@ -853,14 +1033,14 @@
                       },
                       "implementationOf": {
                         "type": "reference",
-                        "id": 32,
+                        "id": 47,
                         "name": "SubscriptionInt.unsubscribe"
                       }
                     }
                   ],
                   "implementationOf": {
                     "type": "reference",
-                    "id": 31,
+                    "id": 46,
                     "name": "SubscriptionInt.unsubscribe"
                   }
                 }
@@ -870,34 +1050,43 @@
                   "title": "Constructors",
                   "kind": 512,
                   "children": [
-                    35
+                    50
                   ]
                 },
                 {
                   "title": "Properties",
                   "kind": 1024,
                   "children": [
-                    39,
-                    37,
-                    36,
-                    38
+                    60,
+                    58,
+                    57,
+                    59
                   ]
                 },
                 {
                   "title": "Methods",
                   "kind": 2048,
                   "children": [
-                    45
+                    61
                   ]
+                }
+              ],
+              "typeParameter": [
+                {
+                  "id": 63,
+                  "name": "V",
+                  "kind": 131072,
+                  "kindString": "Type parameter",
+                  "flags": {}
                 }
               ],
               "implementedTypes": [
                 {
                   "type": "reference",
-                  "id": 26,
+                  "id": 42,
                   "typeArguments": [
                     {
-                      "type": "typeParameter",
+                      "type": "reference",
                       "name": "V"
                     }
                   ],
@@ -906,60 +1095,41 @@
               ]
             },
             {
-              "id": 47,
+              "id": 64,
               "name": "EventDispatcherInt",
               "kind": 256,
               "kindString": "Interface",
-              "flags": {
-                "isExported": true
-              },
+              "flags": {},
               "comment": {
                 "shortText": "The main interface of the event system.\nAn IEventDispatcher is an object that keeps a list of listeners, and sends dispatches events of a certain type to them.\nThis might otherwise be known as a Signal."
               },
-              "typeParameter": [
-                {
-                  "id": 48,
-                  "name": "U",
-                  "kind": 131072,
-                  "kindString": "Type parameter",
-                  "flags": {
-                    "isExported": true
-                  }
-                }
-              ],
               "children": [
                 {
-                  "id": 49,
+                  "id": 65,
                   "name": "add",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 50,
+                      "id": 66,
                       "name": "add",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "parameters": [
                         {
-                          "id": 51,
+                          "id": 67,
                           "name": "listener",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
                             "type": "reference",
-                            "id": 22,
+                            "id": 38,
                             "typeArguments": [
                               {
-                                "type": "typeParameter",
+                                "type": "reference",
                                 "name": "U"
                               }
                             ],
@@ -967,12 +1137,11 @@
                           }
                         },
                         {
-                          "id": 52,
+                          "id": 68,
                           "name": "filter",
                           "kind": 32768,
                           "kindString": "Parameter",
                           "flags": {
-                            "isExported": true,
                             "isOptional": true
                           },
                           "type": {
@@ -981,12 +1150,11 @@
                           }
                         },
                         {
-                          "id": 53,
+                          "id": 69,
                           "name": "priority",
                           "kind": 32768,
                           "kindString": "Parameter",
                           "flags": {
-                            "isExported": true,
                             "isOptional": true
                           },
                           "type": {
@@ -997,10 +1165,10 @@
                       ],
                       "type": {
                         "type": "reference",
-                        "id": 26,
+                        "id": 42,
                         "typeArguments": [
                           {
-                            "type": "typeParameter",
+                            "type": "reference",
                             "name": "U"
                           }
                         ],
@@ -1010,22 +1178,18 @@
                   ]
                 },
                 {
-                  "id": 60,
+                  "id": 76,
                   "name": "clear",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 61,
+                      "id": 77,
                       "name": "clear",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "type": {
                         "type": "intrinsic",
                         "name": "void"
@@ -1034,33 +1198,27 @@
                   ]
                 },
                 {
-                  "id": 57,
+                  "id": 73,
                   "name": "dispatch",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 58,
+                      "id": 74,
                       "name": "dispatch",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "parameters": [
                         {
-                          "id": 59,
+                          "id": 75,
                           "name": "parameter",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
-                            "type": "typeParameter",
+                            "type": "reference",
                             "name": "U"
                           }
                         }
@@ -1073,22 +1231,18 @@
                   ]
                 },
                 {
-                  "id": 62,
+                  "id": 78,
                   "name": "hasListeners",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 63,
+                      "id": 79,
                       "name": "hasListeners",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "type": {
                         "type": "intrinsic",
                         "name": "boolean"
@@ -1097,37 +1251,31 @@
                   ]
                 },
                 {
-                  "id": 54,
+                  "id": 70,
                   "name": "remove",
                   "kind": 2048,
                   "kindString": "Method",
-                  "flags": {
-                    "isExported": true
-                  },
+                  "flags": {},
                   "signatures": [
                     {
-                      "id": 55,
+                      "id": 71,
                       "name": "remove",
                       "kind": 4096,
                       "kindString": "Call signature",
-                      "flags": {
-                        "isExported": true
-                      },
+                      "flags": {},
                       "parameters": [
                         {
-                          "id": 56,
+                          "id": 72,
                           "name": "subscription",
                           "kind": 32768,
                           "kindString": "Parameter",
-                          "flags": {
-                            "isExported": true
-                          },
+                          "flags": {},
                           "type": {
                             "type": "reference",
-                            "id": 26,
+                            "id": 42,
                             "typeArguments": [
                               {
-                                "type": "typeParameter",
+                                "type": "reference",
                                 "name": "U"
                               }
                             ],
@@ -1148,24 +1296,33 @@
                   "title": "Methods",
                   "kind": 2048,
                   "children": [
-                    49,
-                    60,
-                    57,
-                    62,
-                    54
+                    65,
+                    76,
+                    73,
+                    78,
+                    70
                   ]
+                }
+              ],
+              "typeParameter": [
+                {
+                  "id": 80,
+                  "name": "U",
+                  "kind": 131072,
+                  "kindString": "Type parameter",
+                  "flags": {}
                 }
               ],
               "implementedBy": [
                 {
                   "type": "reference",
-                  "id": 64,
+                  "id": 81,
                   "name": "EventDispatcher"
                 }
               ]
             },
             {
-              "id": 22,
+              "id": 38,
               "name": "EventListener",
               "kind": 256,
               "kindString": "Interface",
@@ -1175,7 +1332,7 @@
               },
               "typeParameter": [
                 {
-                  "id": 23,
+                  "id": 39,
                   "name": "T",
                   "kind": 131072,
                   "kindString": "Type parameter",
@@ -1184,8 +1341,8 @@
               ],
               "signatures": [
                 {
-                  "id": 24,
-                  "name": "__call",
+                  "id": 40,
+                  "name": "EventListener",
                   "kind": 4096,
                   "kindString": "Call signature",
                   "flags": {},
@@ -1194,13 +1351,16 @@
                   },
                   "parameters": [
                     {
-                      "id": 25,
+                      "id": 41,
                       "name": "parameter",
                       "kind": 32768,
                       "kindString": "Parameter",
                       "flags": {},
+                      "comment": {
+                        "text": "param text"
+                      },
                       "type": {
-                        "type": "typeParameter",
+                        "type": "reference",
                         "name": "T"
                       }
                     }
@@ -1213,7 +1373,7 @@
               ]
             },
             {
-              "id": 26,
+              "id": 42,
               "name": "SubscriptionInt",
               "kind": 256,
               "kindString": "Interface",
@@ -1221,18 +1381,9 @@
               "comment": {
                 "shortText": "Encapsulates a subscription to an event dispatcher, and allows for unsubscribing"
               },
-              "typeParameter": [
-                {
-                  "id": 27,
-                  "name": "T",
-                  "kind": 131072,
-                  "kindString": "Type parameter",
-                  "flags": {}
-                }
-              ],
               "children": [
                 {
-                  "id": 30,
+                  "id": 45,
                   "name": "filter",
                   "kind": 1024,
                   "kindString": "Property",
@@ -1243,17 +1394,17 @@
                   }
                 },
                 {
-                  "id": 28,
+                  "id": 43,
                   "name": "listener",
                   "kind": 1024,
                   "kindString": "Property",
                   "flags": {},
                   "type": {
                     "type": "reference",
-                    "id": 22,
+                    "id": 38,
                     "typeArguments": [
                       {
-                        "type": "typeParameter",
+                        "type": "reference",
                         "name": "T"
                       }
                     ],
@@ -1261,7 +1412,7 @@
                   }
                 },
                 {
-                  "id": 29,
+                  "id": 44,
                   "name": "priority",
                   "kind": 1024,
                   "kindString": "Property",
@@ -1272,14 +1423,14 @@
                   }
                 },
                 {
-                  "id": 31,
+                  "id": 46,
                   "name": "unsubscribe",
                   "kind": 2048,
                   "kindString": "Method",
                   "flags": {},
                   "signatures": [
                     {
-                      "id": 32,
+                      "id": 47,
                       "name": "unsubscribe",
                       "kind": 4096,
                       "kindString": "Call signature",
@@ -1300,23 +1451,32 @@
                   "title": "Properties",
                   "kind": 1024,
                   "children": [
-                    30,
-                    28,
-                    29
+                    45,
+                    43,
+                    44
                   ]
                 },
                 {
                   "title": "Methods",
                   "kind": 2048,
                   "children": [
-                    31
+                    46
                   ]
+                }
+              ],
+              "typeParameter": [
+                {
+                  "id": 48,
+                  "name": "T",
+                  "kind": 131072,
+                  "kindString": "Type parameter",
+                  "flags": {}
                 }
               ],
               "implementedBy": [
                 {
                   "type": "reference",
-                  "id": 33,
+                  "id": 49,
                   "name": "Subscription"
                 }
               ]
@@ -1327,17 +1487,17 @@
               "title": "Classes",
               "kind": 128,
               "children": [
-                64,
-                33
+                81,
+                49
               ]
             },
             {
               "title": "Interfaces",
               "kind": 256,
               "children": [
-                47,
-                22,
-                26
+                64,
+                38,
+                42
               ]
             }
           ]
@@ -1348,7 +1508,308 @@
           "title": "Namespaces",
           "kind": 2,
           "children": [
-            21
+            37
+          ]
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "name": "merging",
+      "kind": 1,
+      "kindString": "Module",
+      "flags": {},
+      "children": [
+        {
+          "id": 103,
+          "name": "Base",
+          "kind": 256,
+          "kindString": "Interface",
+          "flags": {},
+          "children": [
+            {
+              "id": 104,
+              "name": "base",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 1
+              }
+            }
+          ],
+          "groups": [
+            {
+              "title": "Properties",
+              "kind": 1024,
+              "children": [
+                104
+              ]
+            }
+          ],
+          "extendedBy": [
+            {
+              "type": "reference",
+              "id": 107,
+              "name": "Child"
+            },
+            {
+              "type": "reference",
+              "id": 112,
+              "name": "Child2"
+            }
+          ]
+        },
+        {
+          "id": 105,
+          "name": "Base2",
+          "kind": 256,
+          "kindString": "Interface",
+          "flags": {},
+          "children": [
+            {
+              "id": 106,
+              "name": "base2",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 2
+              }
+            }
+          ],
+          "groups": [
+            {
+              "title": "Properties",
+              "kind": 1024,
+              "children": [
+                106
+              ]
+            }
+          ],
+          "extendedBy": [
+            {
+              "type": "reference",
+              "id": 107,
+              "name": "Child"
+            }
+          ]
+        },
+        {
+          "id": 107,
+          "name": "Child",
+          "kind": 256,
+          "kindString": "Interface",
+          "flags": {},
+          "children": [
+            {
+              "id": 110,
+              "name": "base",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 1
+              },
+              "inheritedFrom": {
+                "type": "reference",
+                "id": 104,
+                "name": "Base.base"
+              }
+            },
+            {
+              "id": 111,
+              "name": "base2",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 2
+              },
+              "inheritedFrom": {
+                "type": "reference",
+                "id": 106,
+                "name": "Base2.base2"
+              }
+            },
+            {
+              "id": 108,
+              "name": "child",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 1
+              }
+            },
+            {
+              "id": 109,
+              "name": "child3",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 2
+              }
+            }
+          ],
+          "groups": [
+            {
+              "title": "Properties",
+              "kind": 1024,
+              "children": [
+                110,
+                111,
+                108,
+                109
+              ]
+            }
+          ],
+          "extendedTypes": [
+            {
+              "type": "reference",
+              "id": 103,
+              "name": "Base"
+            },
+            {
+              "type": "reference",
+              "id": 105,
+              "name": "Base2"
+            }
+          ],
+          "extendedBy": [
+            {
+              "type": "reference",
+              "id": 112,
+              "name": "Child2"
+            }
+          ]
+        },
+        {
+          "id": 112,
+          "name": "Child2",
+          "kind": 256,
+          "kindString": "Interface",
+          "flags": {},
+          "children": [
+            {
+              "id": 116,
+              "name": "base",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 1
+              },
+              "inheritedFrom": {
+                "type": "reference",
+                "id": 104,
+                "name": "Base.base"
+              }
+            },
+            {
+              "id": 117,
+              "name": "base2",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 2
+              },
+              "inheritedFrom": {
+                "type": "reference",
+                "id": 111,
+                "name": "Child.base2"
+              }
+            },
+            {
+              "id": 114,
+              "name": "child",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 1
+              },
+              "inheritedFrom": {
+                "type": "reference",
+                "id": 108,
+                "name": "Child.child"
+              }
+            },
+            {
+              "id": 113,
+              "name": "child2",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 1
+              }
+            },
+            {
+              "id": 115,
+              "name": "child3",
+              "kind": 1024,
+              "kindString": "Property",
+              "flags": {},
+              "type": {
+                "type": "literal",
+                "value": 2
+              },
+              "inheritedFrom": {
+                "type": "reference",
+                "id": 109,
+                "name": "Child.child3"
+              }
+            }
+          ],
+          "groups": [
+            {
+              "title": "Properties",
+              "kind": 1024,
+              "children": [
+                116,
+                117,
+                114,
+                113,
+                115
+              ]
+            }
+          ],
+          "extendedTypes": [
+            {
+              "type": "reference",
+              "id": 107,
+              "name": "Child"
+            },
+            {
+              "type": "reference",
+              "id": 103,
+              "name": "Base"
+            }
+          ]
+        }
+      ],
+      "groups": [
+        {
+          "title": "Interfaces",
+          "kind": 256,
+          "children": [
+            103,
+            105,
+            107,
+            112
           ]
         }
       ]
@@ -1361,7 +1822,9 @@
       "children": [
         1,
         14,
-        20
+        28,
+        36,
+        102
       ]
     }
   ]

@@ -65,7 +65,7 @@ describe("Events", function () {
         const obj = new Events();
         obj.counter = 0;
 
-        const increment = function () {
+        const increment = function (this: Events) {
             this.counter += 1;
         };
 
@@ -102,7 +102,7 @@ describe("Events", function () {
         const obj = new Events();
         obj.counter = 0;
 
-        const increment = function () {
+        const increment = function (this: Events) {
             this.counter += 1;
         };
 
@@ -126,7 +126,7 @@ describe("Events", function () {
         Assert.equal(obj.counter, 5);
     });
 
-    it("binding and trigger with event maps context", function () {
+    it("binding and trigger with event maps context", function (this: any) {
         const obj = new Events();
         obj.counter = 0;
         const context = {};
@@ -147,7 +147,7 @@ describe("Events", function () {
         obj.off()
             .on(
                 {
-                    a: function () {
+                    a: function (this: any) {
                         Assert.strictEqual(
                             this,
                             context,
@@ -315,7 +315,9 @@ describe("Events", function () {
     it("stopListening cleans up references", function () {
         const a: any = new Events();
         const b: any = new Events();
-        const fn = function () {};
+        const fn = function () {
+            // nop
+        };
         b.on("event", fn);
 
         a.listenTo(b, "event", fn).stopListening();
@@ -342,7 +344,9 @@ describe("Events", function () {
     it("stopListening cleans up references from listenToOnce", function () {
         const a: any = new Events();
         const b: any = new Events();
-        const fn = function () {};
+        const fn = function () {
+            // nop
+        };
         b.on("event", fn);
 
         a.listenToOnce(b, "event", fn).stopListening();
@@ -369,7 +373,9 @@ describe("Events", function () {
     it("listenTo and off cleaning up references", function () {
         const a: any = new Events();
         const b: any = new Events();
-        const fn = function () {};
+        const fn = function () {
+            // nop
+        };
 
         a.listenTo(b, "event", fn);
         b.off();
@@ -439,7 +445,7 @@ describe("Events", function () {
         const a = new Events();
         const b = new Events();
         a.listenToOnce(b, {
-            one: function () {
+            one: function (this: Events) {
                 Assert(this === a);
             },
             two: function () {
@@ -461,7 +467,7 @@ describe("Events", function () {
         let b = false;
         const obj = new Events();
         obj.counter = 0;
-        obj.on("all", function (event) {
+        obj.on("all", function (event: string) {
             obj.counter++;
             if (event === "a") {
                 a = true;
@@ -572,7 +578,7 @@ describe("Events", function () {
         const obj = new Events();
         obj.on(
             "event",
-            function () {
+            function (this: TestClass) {
                 this.assertTrue();
             },
             new TestClass()
@@ -767,7 +773,7 @@ describe("Events", function () {
         const obj = new Events();
         obj.counter = 0;
 
-        const increment = function () {
+        const increment = function (this: Events) {
             this.counter += 1;
         };
 
@@ -831,11 +837,13 @@ describe("Events", function () {
     it("Off during iteration with once.", function () {
         let count = 0;
         const obj = new Events();
-        const f = function () {
+        const f = function (this: Events) {
             this.off("event", f);
         };
         obj.on("event", f);
-        obj.once("event", function () {});
+        obj.once("event", function () {
+            // nop
+        });
         obj.on("event", function () {
             count += 1;
         });
@@ -869,7 +877,9 @@ describe("Events", function () {
     it("event functions are chainable", function () {
         const obj = new Events();
         const obj2 = new Events();
-        const fn = function () {};
+        const fn = function () {
+            // nop
+        };
 
         Assert.equal(obj, obj.trigger("noeventssetyet"));
         Assert.equal(obj, obj.off("noeventssetyet"));
@@ -888,7 +898,7 @@ describe("Events", function () {
         const one = new Events();
         const two = new Events();
         let count = 1;
-        one.listenToOnce(two, "x y", function (n) {
+        one.listenToOnce(two, "x y", function (n: number) {
             Assert(n === count++);
         });
         two.trigger("x", 1);
@@ -903,7 +913,7 @@ describe("Events (customized)", function () {
         let count = 0;
         const events = new Events();
         const event = new Event("myEvent");
-        events.on("myEvent", function (e) {
+        events.on("myEvent", function (e: Event) {
             Assert(e instanceof Event);
             count += 1;
         });
@@ -915,7 +925,7 @@ describe("Events (customized)", function () {
         let count = 0;
         const events = new Events();
         const event = new Event("myEvent");
-        events.on("myEvent", function (e) {
+        events.on("myEvent", function (e: Event) {
             count++;
             e.stopPropagation();
         });

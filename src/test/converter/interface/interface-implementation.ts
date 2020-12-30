@@ -1,15 +1,16 @@
-module Forms {
+export module Forms {
     /**
      * Function signature of an event listener callback
      */
-    interface EventListener<T> {
+    export interface EventListener<T> {
+        /** @param parameter param text */
         (parameter: T): any;
     }
 
     /**
      * Encapsulates a subscription to an event dispatcher, and allows for unsubscribing
      */
-    interface SubscriptionInt<T> {
+    export interface SubscriptionInt<T> {
         listener: EventListener<T>;
         priority: number;
         filter: any;
@@ -20,7 +21,7 @@ module Forms {
         unsubscribe(): void;
     }
 
-    class Subscription<V> implements SubscriptionInt<V> {
+    export class Subscription<V> implements SubscriptionInt<V> {
         constructor(
             public listener: EventListener<V>,
             public filter: any,
@@ -76,5 +77,3 @@ module Forms {
         }
     }
 }
-
-export {};

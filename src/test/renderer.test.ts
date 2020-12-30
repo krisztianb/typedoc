@@ -2,12 +2,12 @@ import { Application, ProjectReflection } from "..";
 import * as FS from "fs-extra";
 import * as Path from "path";
 import Assert = require("assert");
-import { ScriptTarget, ModuleKind } from "typescript";
+import { TSConfigReader } from "../lib/utils/options";
 
-function getFileIndex(base, dir = "", results: string[] = []) {
+function getFileIndex(base: string, dir = "", results: string[] = []) {
     const files = FS.readdirSync(Path.join(base, dir));
     files.forEach(function (file) {
-        if (file === "assets") {
+        if (file === "assets" || file === "specs.json") {
             return;
         }
         file = Path.join(dir, file);
@@ -21,10 +21,10 @@ function getFileIndex(base, dir = "", results: string[] = []) {
     return results.sort();
 }
 
-function compareDirectories(a, b) {
+function compareDirectories(a: string, b: string) {
     const aFiles = getFileIndex(a);
     const bFiles = getFileIndex(b);
-    Assert.deepEqual(
+    Assert.deepStrictEqual(
         aFiles,
         bFiles,
         `Generated files differ. between "${a}" and "${b}"`
@@ -64,23 +64,21 @@ describe("Renderer", function () {
 
     it("constructs", function () {
         app = new Application();
+        app.options.addReader(new TSConfigReader());
         app.bootstrap({
-            mode: "modules",
             logger: "console",
-            target: ScriptTarget.ES5,
             readme: Path.join(src, "..", "README.md"),
-            module: ModuleKind.CommonJS,
             gaSite: "foo.com", // verify theme option without modifying output
             name: "typedoc",
-            ignoreCompilerErrors: true,
             disableSources: true,
+            tsconfig: Path.join(src, "..", "tsconfig.json"),
         });
+        app.options.setValue("entryPoints", app.expandInputFiles([src]));
     });
 
     it("converts basic example", function () {
         this.timeout(0);
-        const input = app.expandInputFiles([src]);
-        project = app.convert(input);
+        project = app.convert();
 
         Assert(
             app.logger.errorCount === 0,
@@ -92,10 +90,9 @@ describe("Renderer", function () {
         );
     });
 
-    it("renders basic example", function () {
+    it("renders basic example", async function () {
         this.timeout(0);
-        const result = app.generateDocs(project!, out);
-        Assert(result === true, "Application.generateDocs returned errors");
+        await app.generateDocs(project!, out);
 
         FS.removeSync(Path.join(out, "assets"));
         compareDirectories(Path.join(__dirname, "renderer", "specs"), out);

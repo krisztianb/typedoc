@@ -30,15 +30,15 @@ export type IfInternal<T, F> = InternalOnly extends true ? T : F;
  */
 export type NeverIfInternal<T> = IfInternal<never, T>;
 
+export { Options, ParameterType, ParameterHint, BindOption } from "./options";
 export {
-    Options,
-    ParameterType,
-    ParameterHint,
-    ParameterScope,
-    BindOption,
-    SourceFileMode,
-} from "./options";
-export { insertPrioritySorted, removeIfPresent } from "./array";
+    insertPrioritySorted,
+    removeIfPresent,
+    removeIf,
+    filterMap,
+    unique,
+    uniqueByEquals,
+} from "./array";
 export { Component, AbstractComponent, ChildableComponent } from "./component";
 export { Event, EventDispatcher } from "./events";
 export {

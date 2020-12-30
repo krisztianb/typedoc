@@ -1,27 +1,26 @@
+"use strict";
 // @ts-check
 
+const ts = require("typescript");
 const fs = require("fs-extra");
 const path = require("path");
 const TypeDoc = require("..");
-const ts = require("typescript");
 
 const app = new TypeDoc.Application();
+app.options.addReader(new TypeDoc.TSConfigReader());
 app.bootstrap({
-    mode: TypeDoc.SourceFileMode.Modules,
-    target: ts.ScriptTarget.ES2016,
-    module: ts.ModuleKind.CommonJS,
-    experimentalDecorators: true,
-    jsx: ts.JsxEmit.React,
-    lib: [
-        "lib.dom.d.ts",
-        "lib.es5.d.ts",
-        "lib.es2015.iterable.d.ts",
-        "lib.es2015.collection.d.ts",
-    ],
     name: "typedoc",
     excludeExternals: true,
     disableSources: true,
-    resolveJsonModule: true,
+    tsconfig: path.join(
+        __dirname,
+        "..",
+        "dist",
+        "test",
+        "converter",
+        "tsconfig.json"
+    ),
+    externalPattern: ["**/node_modules/**"],
 });
 
 // Note that this uses the test files in dist, not in src, this is important since
@@ -30,16 +29,14 @@ const base = path.join(__dirname, "../dist/test/converter");
 
 /** @type {[string, () => void, () => void][]} */
 const conversions = [
-    ["specs", () => {}, () => {}],
     [
-        "specs.d",
-        () => app.options.setValue("includeDeclarations", true),
-        () => app.options.setValue("includeDeclarations", false),
-    ],
-    [
-        "specs-without-exported",
-        () => app.options.setValue("excludeNotExported", true),
-        () => app.options.setValue("excludeNotExported", false),
+        "specs",
+        () => {
+            // nop
+        },
+        () => {
+            // nop
+        },
     ],
     [
         "specs-with-lump-categories",
@@ -58,40 +55,59 @@ const conversions = [
  * @param {string[]} dirs
  */
 function rebuildConverterTests(dirs) {
-    return Promise.all(
-        dirs.map((fullPath) => {
-            console.log(fullPath);
-            const src = app.expandInputFiles([fullPath]);
-            return Promise.all(
-                conversions.map(([file, before, after]) => {
-                    const out = path.join(fullPath, `${file}.json`);
-                    if (fs.existsSync(out)) {
-                        TypeDoc.resetReflectionID();
-                        before();
-                        const result = app.convert(src);
-                        const serialized = app.serializer.toObject(result);
-
-                        const data = JSON.stringify(serialized, null, "  ")
-                            .split(TypeDoc.normalizePath(base))
-                            .join("%BASE%");
-                        after();
-                        return fs.writeFile(out.replace("dist", "src"), data);
-                    }
-                })
-            );
-        })
+    const program = ts.createProgram(
+        app.options.getFileNames(),
+        app.options.getCompilerOptions()
     );
+
+    const errors = ts.getPreEmitDiagnostics(program);
+    if (errors.length) {
+        app.logger.diagnostics(errors);
+        return;
+    }
+
+    for (const fullPath of dirs) {
+        console.log(fullPath);
+        const src = app.expandInputFiles([fullPath]);
+
+        for (const [file, before, after] of conversions) {
+            const out = path.join(fullPath, `${file}.json`);
+            if (fs.existsSync(out)) {
+                TypeDoc.resetReflectionID();
+                before();
+                const result = app.converter.convert(src, program);
+                const serialized = app.serializer.toObject(result);
+
+                const data = JSON.stringify(serialized, null, "  ")
+                    .split(TypeDoc.normalizePath(base))
+                    .join("%BASE%");
+                after();
+                fs.writeFileSync(out.replace("dist", "src"), data);
+            }
+        }
+    }
 }
 
 async function rebuildRendererTest() {
     await fs.remove(path.join(__dirname, "../src/test/renderer/specs"));
     const src = path.join(__dirname, "../examples/basic/src");
     const out = path.join(__dirname, "../src/test/renderer/specs");
-
     await fs.remove(out);
-    app.options.setValue("excludeExternals", false);
-    app.generateDocs(app.expandInputFiles([src]), out);
-    app.options.setValue("excludeExternals", true);
+
+    const app = new TypeDoc.Application();
+    app.options.addReader(new TypeDoc.TSConfigReader());
+    app.bootstrap({
+        name: "typedoc",
+        disableSources: true,
+        gaSite: "foo.com",
+        tsconfig: path.join(src, "..", "tsconfig.json"),
+        externalPattern: ["**/node_modules/**"],
+    });
+
+    app.options.setValue("entryPoints", app.expandInputFiles([src]));
+    const project = app.convert();
+    await app.generateDocs(project, out);
+    await app.generateJson(project, path.join(out, "specs.json"));
 
     /**
      * Avoiding sync methods here is... difficult.

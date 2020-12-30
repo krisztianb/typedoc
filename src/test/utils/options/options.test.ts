@@ -1,9 +1,4 @@
-import {
-    Logger,
-    Options,
-    ParameterType,
-    ParameterScope,
-} from "../../../lib/utils";
+import { Logger, Options, ParameterType } from "../../../lib/utils";
 import {
     MapDeclarationOption,
     NumberDeclarationOption,
@@ -18,6 +13,13 @@ describe("Options", () => {
         getValue(name: string): unknown;
     };
     options.addDefaultDeclarations();
+    options.addDeclaration({
+        name: "mapped",
+        type: ParameterType.Map,
+        map: { a: 1 },
+        defaultValue: 2,
+        help: "",
+    });
 
     it("Errors on duplicate declarations", () => {
         logger.resetErrors();
@@ -27,15 +29,6 @@ describe("Options", () => {
             type: ParameterType.Boolean,
         });
         equal(logger.hasErrors(), true);
-    });
-
-    it("Does not error if the same declaration is registered twice", () => {
-        logger.resetErrors();
-        const declaration = { name: "test-declaration", help: "" };
-        options.addDeclaration(declaration);
-        options.addDeclaration(declaration);
-        equal(logger.hasErrors(), false);
-        options.removeDeclarationByName(declaration.name);
     });
 
     it("Does not throw if number declaration has no min and max values", () => {
@@ -83,12 +76,6 @@ describe("Options", () => {
         equal(options.getDeclaration("not-an-option"), undefined);
     });
 
-    it("Also removes the declaration under its short name", () => {
-        options.addDeclaration({ name: "not-an-option", help: "", short: "#" });
-        options.removeDeclarationByName("not-an-option");
-        equal(options.getDeclaration("#"), undefined);
-    });
-
     it("Ignores removal of non-existent declarations", () => {
         options.removeDeclarationByName("not-an-option");
         equal(options.getDeclaration("not-an-option"), undefined);
@@ -103,17 +90,10 @@ describe("Options", () => {
     });
 
     it("Errors if converting a set value errors", () => {
-        throws(() => options.setValue("mode", "nonsense" as any));
+        throws(() => options.setValue("mapped" as any, "nonsense" as any));
     });
 
     it("Supports directly getting values", () => {
         equal(options.getRawValues().toc, []);
-    });
-
-    it("Supports getting by scope", () => {
-        equal(
-            options.getDeclarationsByScope(ParameterScope.TypeDoc).length !== 0,
-            true
-        );
     });
 });

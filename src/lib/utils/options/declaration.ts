@@ -1,8 +1,7 @@
-import { CompilerOptions } from "typescript";
-import { IgnoredTsOptionKeys } from "./sources/typescript";
+import { LogLevel } from "../loggers";
 
 /**
- * An interface describing all TypeDoc specific options options. Generated from a
+ * An interface describing all TypeDoc specific options. Generated from a
  * map which contains more information about each option for better types when
  * defining said options.
  */
@@ -16,51 +15,34 @@ export type TypeDocOptions = {
 };
 
 /**
- * The CompilerOptions interface includes an index signature to avoid errors when unknown
- * options are passed. TypeDoc's option parsing is stricter, so we need to remove it.
- *
- * @see https://github.com/Microsoft/TypeScript/issues/25987#issuecomment-408339599
+ * Describes all TypeDoc specific options as returned by {@link Options.getValue}, this is
+ * slightly more restrictive than the {@link TypeDocOptions} since it does not allow both
+ * keys and values for mapped option types.
  */
-type KnownKeys<T> = {
-    [K in keyof T]: string extends K ? never : number extends K ? never : K;
-} extends { [_ in keyof T]: infer U }
-    ? U
-    : never;
-
-/**
- * All supported options, includes both TypeDoc and TypeScript options.
- */
-export type TypeDocAndTSOptions = TypeDocOptions &
-    Pick<
-        CompilerOptions,
-        Exclude<KnownKeys<CompilerOptions>, IgnoredTsOptionKeys>
-    >;
-
-export enum SourceFileMode {
-    File,
-    Modules,
-}
+export type TypeDocOptionValues = {
+    [K in keyof TypeDocOptionMap]: TypeDocOptionMap[K] extends Record<
+        string,
+        infer U
+    >
+        ? Exclude<U, string>
+        : TypeDocOptionMap[K];
+};
 
 /**
  * Describes all TypeDoc options. Used internally to provide better types when fetching options.
- * External consumers should likely use either [[TypeDocAndTSOptions]] or [[TypeDocOptions]].
+ * External consumers should likely use [[TypeDocOptions]] instead.
  */
 export interface TypeDocOptionMap {
     options: string;
     tsconfig: string;
 
-    inputFiles: string[];
-    mode: { file: SourceFileMode.File; modules: SourceFileMode.Modules };
-    includeDeclarations: boolean;
-    entryPoint: string;
+    entryPoints: string[];
     exclude: string[];
     externalPattern: string[];
     excludeExternals: boolean;
-    excludeNotExported: boolean;
     excludePrivate: boolean;
     excludeProtected: boolean;
     excludeNotDocumented: boolean;
-    ignoreCompilerErrors: boolean;
     disableSources: boolean;
     includes: string;
     media: string;
@@ -86,9 +68,12 @@ export interface TypeDocOptionMap {
 
     help: boolean;
     version: boolean;
+    showConfig: boolean;
     plugin: string[];
     logger: unknown; // string | Function
+    logLevel: typeof LogLevel;
     listInvalidSymbolLinks: boolean;
+    markedOptions: unknown;
 }
 
 /**
@@ -124,21 +109,11 @@ export enum ParameterType {
     Array,
 }
 
-export enum ParameterScope {
-    TypeDoc,
-    TypeScript,
-}
-
 export interface DeclarationOptionBase {
     /**
      * The option name.
      */
     name: string;
-
-    /**
-     * An optional short name for the option.
-     */
-    short?: string;
 
     /**
      * The help text to be displayed to the user when --help is passed.
@@ -150,12 +125,6 @@ export interface DeclarationOptionBase {
      * If not set, the type will be a string.
      */
     type?: ParameterType;
-
-    /**
-     * Whether the option belongs to TypeDoc or TypeScript.
-     * If not specified will be defaulted to TypeDoc.
-     */
-    scope?: ParameterScope;
 }
 
 export interface StringDeclarationOption extends DeclarationOptionBase {
@@ -421,13 +390,11 @@ function getBoundsError(
 
 /**
  * Checks if the given value is a finite number.
- * This is equivalent to Number.isFinite, but that function is incorrectly typed to only accept
- * `number` in the latest TS version. See TypeScript/34932
  * @param value The value being checked.
  * @returns True, if the value is a finite number, otherwise false.
  */
-function isFiniteNumber(value?: unknown): value is number {
-    return typeof value === "number" && isFinite(value);
+function isFiniteNumber(value: unknown): value is number {
+    return Number.isFinite(value);
 }
 
 /**

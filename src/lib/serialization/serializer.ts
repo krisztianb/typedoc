@@ -43,7 +43,19 @@ export class Serializer extends EventDispatcher {
         group.sort((a, b) => b.priority - a.priority);
     }
 
-    toObject<T>(value: T, init: object = {}): ModelToObject<T> {
+    toObject<T>(value: T, init?: object): ModelToObject<T>;
+    toObject(value: unknown, init: object = {}): unknown {
+        if (value == null || typeof value !== "object") {
+            return value; // Serializing some primitive
+        }
+
+        if (Array.isArray(value)) {
+            if (value.length === 0) {
+                return undefined;
+            }
+            return value.map((val) => this.toObject(val));
+        }
+
         // Note: This type *could* potentially lie, if a serializer declares a partial type but fails to provide
         // the defined property, but the benefit of being mostly typed is probably worth it.
         // TypeScript errors out if init is correctly typed as `Partial<ModelToObject<T>>`
@@ -106,9 +118,9 @@ export class Serializer extends EventDispatcher {
     }
 }
 
-const serializerComponents: (new (owner: Serializer) => SerializerComponent<
-    any
->)[] = [
+const serializerComponents: (new (
+    owner: Serializer
+) => SerializerComponent<any>)[] = [
     S.CommentTagSerializer,
     S.CommentSerializer,
 
@@ -117,7 +129,6 @@ const serializerComponents: (new (owner: Serializer) => SerializerComponent<
     S.ContainerReflectionSerializer,
     S.DeclarationReflectionSerializer,
     S.ParameterReflectionSerializer,
-    S.ProjectReflectionSerializer,
     S.SignatureReflectionSerializer,
     S.TypeParameterReflectionSerializer,
 
@@ -135,9 +146,11 @@ const serializerComponents: (new (owner: Serializer) => SerializerComponent<
     S.ReferenceTypeSerializer,
     S.ReferenceTypeSerializer,
     S.ReflectionTypeSerializer,
-    S.StringLiteralTypeSerializer,
+    S.LiteralTypeSerializer,
     S.TupleTypeSerializer,
+    S.TemplateLiteralTypeSerializer,
     S.NamedTupleMemberTypeSerializer,
+    S.MappedTypeSerializer,
     S.TypeOperatorTypeSerializer,
     S.TypeParameterTypeSerializer,
     S.UnionTypeSerializer,

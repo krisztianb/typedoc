@@ -9,6 +9,7 @@ import { ParameterReflection } from "./parameter";
 import { IntrinsicType } from "../types";
 import { TypeParameterReflection } from "./type-parameter";
 import { removeIfPresent } from "../../utils";
+import type * as ts from "typescript";
 
 /**
  * A reflection that represents the root of the project.
@@ -17,11 +18,10 @@ import { removeIfPresent } from "../../utils";
  * and source files of the processed project through this reflection.
  */
 export class ProjectReflection extends ContainerReflection {
-    private reflectionToSymbolIdMap = new WeakMap<Reflection, number[]>();
-    // The inverse of reflectionToSymbolIdMap
-    private symbolIdToReflectionIdMap = new Map<number, number>();
     // Used to resolve references.
-    private fqnToReflectionIdMap = new Map<string, number>();
+    private symbolToReflectionIdMap = new Map<ts.Symbol, number>();
+
+    private reflectionIdToSymbolMap = new Map<number, ts.Symbol>();
 
     // Maps a reflection ID to all references eventually referring to it.
     private referenceGraph?: Map<number, number[]>;
@@ -67,7 +67,7 @@ export class ProjectReflection extends ContainerReflection {
      * @param name  The name of the project.
      */
     constructor(name: string) {
-        super(name, ReflectionKind.Global);
+        super(name, ReflectionKind.Project);
     }
 
     /**
@@ -127,30 +127,34 @@ export class ProjectReflection extends ContainerReflection {
      * there will be a reference which points to the symbol, but the symbol will not be converted
      * and the rename will point to nothing. Warn the user if this happens.
      */
-    getDanglingReferences() {
-        const dangling = new Set<string>();
+    removeDanglingReferences() {
+        const dangling = new Set<ReferenceReflection>();
         for (const ref of Object.values(this.reflections)) {
             if (ref instanceof ReferenceReflection) {
                 if (!ref.tryGetTargetReflection()) {
-                    dangling.add(ref.name);
+                    dangling.add(ref);
                 }
             }
         }
-        return [...dangling];
+        for (const refl of dangling) {
+            this.removeReflection(refl);
+        }
     }
 
     /**
      * Registers the given reflection so that it can be quickly looked up by helper methods.
      * Should be called for *every* reflection added to the project.
      */
-    registerReflection(reflection: Reflection, fqn?: string) {
+    registerReflection(reflection: Reflection, symbol?: ts.Symbol) {
         this.referenceGraph = undefined;
         this.reflections[reflection.id] = reflection;
 
-        if (fqn) {
-            if (!this.fqnToReflectionIdMap.has(fqn)) {
-                this.fqnToReflectionIdMap.set(fqn, reflection.id);
-            }
+        if (symbol) {
+            this.symbolToReflectionIdMap.set(
+                symbol,
+                this.symbolToReflectionIdMap.get(symbol) ?? reflection.id
+            );
+            this.reflectionIdToSymbolMap.set(reflection.id, symbol);
         }
     }
 
@@ -158,26 +162,18 @@ export class ProjectReflection extends ContainerReflection {
      * Removes a reflection from the documentation. Can be used by plugins to filter reflections
      * out of the generated documentation. Has no effect if the reflection is not present in the
      * project.
-     *
-     * Note: If `removeReferences` is set to true, only references which have been created
-     * will be removed. If a reference is later created pointing to the removed reflection,
-     * it will not be removed and will still produce a broken reference.
      */
-    removeReflection(reflection: Reflection, removeReferences = false) {
-        if (removeReferences) {
-            for (const id of this.getReferenceGraph().get(reflection.id) ??
-                []) {
-                const ref = this.getReflectionById(id);
-                if (ref) {
-                    this.removeReflection(ref, true);
-                }
+    removeReflection(reflection: Reflection) {
+        // Remove references
+        for (const id of this.getReferenceGraph().get(reflection.id) ?? []) {
+            const ref = this.getReflectionById(id);
+            if (ref) {
+                this.removeReflection(ref);
             }
-            this.getReferenceGraph().delete(reflection.id);
         }
+        this.getReferenceGraph().delete(reflection.id);
 
-        reflection.traverse((child) =>
-            this.removeReflection(child, removeReferences)
-        );
+        reflection.traverse((child) => this.removeReflection(child));
 
         const parent = reflection.parent as DeclarationReflection;
         parent?.traverse((child, property) => {
@@ -218,9 +214,9 @@ export class ProjectReflection extends ContainerReflection {
             return false; // Stop iteration
         });
 
-        const ids = this.reflectionToSymbolIdMap.get(reflection);
-        for (const id of ids ?? []) {
-            this.symbolIdToReflectionIdMap.delete(id);
+        const symbol = this.reflectionIdToSymbolMap.get(reflection.id);
+        if (symbol) {
+            this.symbolToReflectionIdMap.delete(symbol);
         }
 
         delete this.reflections[reflection.id];
@@ -236,13 +232,18 @@ export class ProjectReflection extends ContainerReflection {
 
     /**
      * Gets the reflection associated with the given symbol, if it exists.
-     * @param fqn the fully qualified name of a symbol.
+     * @internal
      */
-    getReflectionFromFQN(fqn: string) {
-        const id = this.fqnToReflectionIdMap.get(fqn);
+    getReflectionFromSymbol(symbol: ts.Symbol) {
+        const id = this.symbolToReflectionIdMap.get(symbol);
         if (typeof id === "number") {
             return this.getReflectionById(id);
         }
+    }
+
+    /** @internal */
+    getSymbolFromReflection(reflection: Reflection) {
+        return this.reflectionIdToSymbolMap.get(reflection.id);
     }
 
     private getReferenceGraph(): Map<number, number[]> {

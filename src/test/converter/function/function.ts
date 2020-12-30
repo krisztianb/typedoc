@@ -1,9 +1,4 @@
 /**
- * This is an internal function.
- */
-function internalFunction(): void {}
-
-/**
  * This is a simple exported function.
  */
 export function exportedFunction(): void {}
@@ -69,7 +64,7 @@ export function functionWithDefaults(
     valueB: number = 100,
     valueC: number = Number.NaN,
     valueD: boolean = true,
-    valueE: boolean = null
+    valueE: boolean = null!
 ): string {
     return valueA;
 }
@@ -80,7 +75,7 @@ export function functionWithDefaults(
  * @param rest  The rest parameter.
  * @return This is the return value of the function.
  */
-function functionWithRest(...rest: string[]): string {
+export function functionWithRest(...rest: string[]): string {
     return rest.join(", ");
 }
 
@@ -101,7 +96,9 @@ export function multipleSignatures(value: { name: string }): string;
 
 /**
  * This is the actual implementation, this comment will not be visible
- * in the generated documentation.
+ * in the generated documentation. The `@inheritdoc` tag can not be used
+ * to pull content from this signature into documentation for the real
+ * signatures.
  *
  * @return This is the return value of the function.
  */
@@ -168,15 +165,42 @@ export module moduleFunction {
     /**
      * This variable is appended to a function.
      */
-    let functionVariable: string;
+    export let functionVariable: string;
 
     /**
      * This function is appended to another function.
      */
-    function append() {}
+    export function append() {}
 
     /**
      * This function is appended to another function.
      */
-    function prepend() {}
+    export function prepend() {}
+}
+
+export class Predicates {
+    static isString(x: unknown): x is string {
+        return false;
+    }
+    isString(): this is string {
+        return false;
+    }
+    static assert(x: unknown): asserts x {}
+    assertString(): asserts this is string {}
+}
+
+/**
+ * Returns true if fn returns true for every item in the iterator
+ *
+ * Returns true if the iterator is empty
+ */
+export const all: {
+    <T>(fn: (item: T) => boolean, iterator: Iterable<T>): boolean;
+    <T>(fn: (item: T) => boolean): (iterator: Iterable<T>) => boolean;
+} = () => false as any;
+
+export function boolOrUndef(x: number) {
+    if (x < 5) return true;
+    if (x > 20) return false;
+    return undefined;
 }

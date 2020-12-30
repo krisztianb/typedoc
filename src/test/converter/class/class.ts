@@ -17,7 +17,7 @@ export class TestClass {
     private privateProperty: number[];
 
     /**
-     * privateProperty short text.
+     * staticProperty short text.
      */
     static staticProperty: TestClass;
 
@@ -102,18 +102,6 @@ export module TestSubClass {
      * staticMergedMethod short text.
      */
     export function staticMergedMethod() {}
-}
-
-/**
- * This class will not appear when `excludeNotExported=true`
- */
-abstract class NotExportedClass {
-    /**
-     * Adds two numbers
-     */
-    add(a: number, b: number) {
-        a + b;
-    }
 }
 
 const x = "literal";

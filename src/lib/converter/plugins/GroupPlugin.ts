@@ -21,7 +21,7 @@ export class GroupPlugin extends ConverterComponent {
      * Define the sort order of reflections.
      */
     static WEIGHTS = [
-        ReflectionKind.Global,
+        ReflectionKind.Project,
         ReflectionKind.Module,
         ReflectionKind.Namespace,
         ReflectionKind.Enum,
@@ -52,25 +52,21 @@ export class GroupPlugin extends ConverterComponent {
     /**
      * Define the singular name of individual reflection kinds.
      */
-    static SINGULARS = (function () {
-        const singulars = {};
-        singulars[ReflectionKind.Enum] = "Enumeration";
-        singulars[ReflectionKind.EnumMember] = "Enumeration member";
-        return singulars;
-    })();
+    static SINGULARS = {
+        [ReflectionKind.Enum]: "Enumeration",
+        [ReflectionKind.EnumMember]: "Enumeration member",
+    };
 
     /**
      * Define the plural name of individual reflection kinds.
      */
-    static PLURALS = (function () {
-        const plurals = {};
-        plurals[ReflectionKind.Class] = "Classes";
-        plurals[ReflectionKind.Property] = "Properties";
-        plurals[ReflectionKind.Enum] = "Enumerations";
-        plurals[ReflectionKind.EnumMember] = "Enumeration members";
-        plurals[ReflectionKind.TypeAlias] = "Type aliases";
-        return plurals;
-    })();
+    static PLURALS = {
+        [ReflectionKind.Class]: "Classes",
+        [ReflectionKind.Property]: "Properties",
+        [ReflectionKind.Enum]: "Enumerations",
+        [ReflectionKind.EnumMember]: "Enumeration members",
+        [ReflectionKind.TypeAlias]: "Type aliases",
+    };
 
     /**
      * Create a new GroupPlugin instance.
@@ -88,16 +84,11 @@ export class GroupPlugin extends ConverterComponent {
      * @param context  The context object describing the current state the converter is in.
      * @param reflection  The reflection that is currently resolved.
      */
-    private onResolve(context: Context, reflection: Reflection) {
+    private onResolve(_context: Context, reflection: Reflection) {
         reflection.kindString = GroupPlugin.getKindSingular(reflection.kind);
 
         if (reflection instanceof ContainerReflection) {
-            if (reflection.children && reflection.children.length > 0) {
-                reflection.children.sort(GroupPlugin.sortCallback);
-                reflection.groups = GroupPlugin.getReflectionGroups(
-                    reflection.children
-                );
-            }
+            this.group(reflection);
         }
     }
 
@@ -118,15 +109,25 @@ export class GroupPlugin extends ConverterComponent {
         }
 
         const project = context.project;
-        if (project.children && project.children.length > 0) {
-            project.children.sort(GroupPlugin.sortCallback);
-            project.groups = GroupPlugin.getReflectionGroups(project.children);
-        }
+        this.group(project);
 
         walkDirectory(project.directory);
         project.files.forEach((file) => {
             file.groups = GroupPlugin.getReflectionGroups(file.reflections);
         });
+    }
+
+    private group(reflection: ContainerReflection) {
+        if (
+            reflection.children &&
+            reflection.children.length > 0 &&
+            !reflection.groups
+        ) {
+            reflection.children.sort(GroupPlugin.sortCallback);
+            reflection.groups = GroupPlugin.getReflectionGroups(
+                reflection.children
+            );
+        }
     }
 
     /**
@@ -159,13 +160,12 @@ export class GroupPlugin extends ConverterComponent {
         });
 
         groups.forEach((group) => {
-            let someExported = false,
-                allInherited = true,
-                allPrivate = true,
-                allProtected = true,
-                allExternal = true;
+            let allInherited = true;
+            let allPrivate = true;
+            let allProtected = true;
+            let allExternal = true;
+
             group.children.forEach((child) => {
-                someExported = child.flags.isExported || someExported;
                 allPrivate = child.flags.isPrivate && allPrivate;
                 allProtected =
                     (child.flags.isPrivate || child.flags.isProtected) &&
@@ -179,7 +179,6 @@ export class GroupPlugin extends ConverterComponent {
                 }
             });
 
-            group.someChildrenAreExported = someExported;
             group.allChildrenAreInherited = allInherited;
             group.allChildrenArePrivate = allPrivate;
             group.allChildrenAreProtectedOrPrivate = allProtected;
@@ -199,7 +198,7 @@ export class GroupPlugin extends ConverterComponent {
         let str = ReflectionKind[kind];
         str = str.replace(
             /(.)([A-Z])/g,
-            (m, a, b) => a + " " + b.toLowerCase()
+            (_m, a, b) => a + " " + b.toLowerCase()
         );
         return str;
     }
@@ -211,8 +210,10 @@ export class GroupPlugin extends ConverterComponent {
      * @returns The singular name of the given internal typescript kind identifier
      */
     static getKindSingular(kind: ReflectionKind): string {
-        if (GroupPlugin.SINGULARS[kind]) {
-            return GroupPlugin.SINGULARS[kind];
+        if (kind in GroupPlugin.SINGULARS) {
+            return GroupPlugin.SINGULARS[
+                kind as keyof typeof GroupPlugin.SINGULARS
+            ];
         } else {
             return GroupPlugin.getKindString(kind);
         }
@@ -225,8 +226,10 @@ export class GroupPlugin extends ConverterComponent {
      * @returns The plural name of the given internal typescript kind identifier
      */
     static getKindPlural(kind: ReflectionKind): string {
-        if (GroupPlugin.PLURALS[kind]) {
-            return GroupPlugin.PLURALS[kind];
+        if (kind in GroupPlugin.PLURALS) {
+            return GroupPlugin.PLURALS[
+                kind as keyof typeof GroupPlugin.PLURALS
+            ];
         } else {
             return this.getKindString(kind) + "s";
         }

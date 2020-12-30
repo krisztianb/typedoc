@@ -7,39 +7,42 @@ import {
 import * as FS from "fs";
 import * as Path from "path";
 import { deepStrictEqual as equal, ok } from "assert";
-import { ScriptTarget, ModuleKind, JsxEmit } from "typescript";
-
-import json = require("./converter/class/specs.json");
-import { JSONOutput } from "../lib/serialization";
+import * as ts from "typescript";
+import { TSConfigReader } from "../lib/utils/options";
 
 describe("Converter", function () {
     const base = Path.join(__dirname, "converter");
     const app = new Application();
+    app.options.addReader(new TSConfigReader());
     app.bootstrap({
-        mode: "modules",
         logger: "none",
-        target: ScriptTarget.ES2016,
-        module: ModuleKind.CommonJS,
-        experimentalDecorators: true,
-        jsx: JsxEmit.React,
         name: "typedoc",
-        ignoreCompilerErrors: true,
         excludeExternals: true,
         disableSources: true,
-        resolveJsonModule: true,
+        tsconfig: Path.join(base, "tsconfig.json"),
+        externalPattern: ["**/node_modules/**"],
+    });
+
+    let program: ts.Program;
+    it("Compiles", () => {
+        program = ts.createProgram(
+            app.options.getFileNames(),
+            app.options.getCompilerOptions()
+        );
+
+        const errors = ts.getPreEmitDiagnostics(program);
+        equal(errors, []);
     });
 
     const checks: [string, () => void, () => void][] = [
-        ["specs", () => {}, () => {}],
         [
-            "specs.d",
-            () => app.options.setValue("includeDeclarations", true),
-            () => app.options.setValue("includeDeclarations", false),
-        ],
-        [
-            "specs-without-exported",
-            () => app.options.setValue("excludeNotExported", true),
-            () => app.options.setValue("excludeNotExported", false),
+            "specs",
+            () => {
+                // nop
+            },
+            () => {
+                // nop
+            },
         ],
         [
             "specs-with-lump-categories",
@@ -71,7 +74,10 @@ describe("Converter", function () {
                 it(`[${file}] converts fixtures`, function () {
                     before();
                     resetReflectionID();
-                    result = app.convert(app.expandInputFiles([path]));
+                    result = app.converter.convert(
+                        app.expandInputFiles([path]),
+                        program
+                    );
                     after();
                     ok(
                         result instanceof ProjectReflection,
@@ -96,46 +102,3 @@ describe("Converter", function () {
         });
     });
 });
-
-describe("Serializer", () => {
-    it("Type checks", () => {
-        const typed: JSONOutput.ProjectReflection = json;
-        equal(json, typed);
-    });
-});
-
-// describe('Converter with excludeNotDocumented=true', function() {
-//     const base = Path.join(__dirname, 'converter');
-//     const fixtureDir = Path.join(base, 'exclude-not-documented');
-//     let app: Application;
-//
-//     before('constructs', function() {
-//         app = new Application({
-//             mode:   'Modules',
-//             logger: 'none',
-//             target: 'ES5',
-//             module: 'CommonJS',
-//             experimentalDecorators: true,
-//             excludeNotDocumented: true,
-//             jsx: 'react'
-//         });
-//     });
-//
-//     let result: ProjectReflection | undefined;
-//
-//     describe('Exclude not documented symbols', () => {
-//         it('converts fixtures', function() {
-//             resetReflectionID();
-//             result = app.convert(app.expandInputFiles([fixtureDir]));
-//             Assert(result instanceof ProjectReflection, 'No reflection returned');
-//         });
-//
-//         it('matches specs', function() {
-//             const specs = JSON.parse(FS.readFileSync(Path.join(fixtureDir, 'specs-without-undocumented.json')).toString());
-//             let data = JSON.stringify(result!.toObject(), null, '  ');
-//             data = data.split(normalizePath(base)).join('%BASE%');
-//
-//             compareReflections(JSON.parse(data), specs);
-//         });
-//     });
-// });

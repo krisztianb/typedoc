@@ -41,7 +41,9 @@ export type ModelToObject<T> = T extends Array<infer U>
 // Order matters here. Some types are subtypes of other types.
 type _ModelToObject<T> =
     // Reflections
-    T extends M.ReflectionGroup
+    T extends Primitive
+        ? T
+        : T extends M.ReflectionGroup
         ? ReflectionGroup
         : T extends M.ReflectionCategory
         ? ReflectionCategory
@@ -50,7 +52,7 @@ type _ModelToObject<T> =
         : T extends M.ParameterReflection
         ? ParameterReflection
         : T extends M.DeclarationReflection
-        ? DeclarationReflection | ReflectionPointer
+        ? DeclarationReflection
         : T extends M.TypeParameterReflection
         ? TypeParameterReflection
         : T extends M.ProjectReflection
@@ -80,12 +82,14 @@ type _ModelToObject<T> =
         ? ReferenceType
         : T extends M.ReflectionType
         ? ReflectionType
-        : T extends M.StringLiteralType
-        ? StringLiteralType
+        : T extends M.LiteralType
+        ? LiteralType
         : T extends M.TupleType
         ? TupleType
         : T extends M.UnknownType
         ? UnknownType
+        : T extends M.TemplateLiteralType
+        ? TemplateLiteralType
         : T extends M.Type
         ? SomeType // Technically AbstractType, but the union is more useful
         : // Miscellaneous
@@ -101,6 +105,13 @@ type _ModelToObject<T> =
 
 type Primitive = string | number | undefined | null | boolean;
 
+// Separate helper so that we can trigger distribution.
+type ToSerialized<T> = T extends Primitive
+    ? T
+    : T extends bigint
+    ? { value: string; negative: boolean }
+    : ModelToObject<T>;
+
 /**
  * Helper to describe a set of serialized properties. Primitive types are returned
  * directly, while other models are first passed through ModelToObject.
@@ -108,7 +119,7 @@ type Primitive = string | number | undefined | null | boolean;
  * is a plain object that consumers may modify as they choose, TypeDoc doesn't care.
  */
 type S<T, K extends keyof T> = {
-    -readonly [K2 in K]: T[K2] extends Primitive ? T[K2] : ModelToObject<T[K2]>;
+    -readonly [K2 in K]: ToSerialized<T[K2]>;
 };
 
 // Reflections
@@ -136,8 +147,15 @@ export interface SignatureReflection
     extends Reflection,
         S<
             M.SignatureReflection,
-            "type" | "overwrites" | "inheritedFrom" | "implementationOf"
-        > {}
+            | "parameters"
+            | "type"
+            | "overwrites"
+            | "inheritedFrom"
+            | "implementationOf"
+        > {
+    // Weird not to call this typeParameters... preserving backwards compatibility for now.
+    typeParameter?: ModelToObject<M.SignatureReflection["typeParameters"]>;
+}
 
 export interface ParameterReflection
     extends Reflection,
@@ -148,51 +166,49 @@ export interface DeclarationReflection
         S<
             M.DeclarationReflection,
             | "type"
+            | "signatures"
+            | "indexSignature"
             | "defaultValue"
             | "overwrites"
             | "inheritedFrom"
+            | "implementationOf"
             | "extendedTypes"
             | "extendedBy"
             | "implementedTypes"
             | "implementedBy"
-            | "implementationOf"
-        > {}
+        > {
+    // Weird not to call this typeParameters... preserving backwards compatibility for now.
+    typeParameter?: ModelToObject<M.DeclarationReflection["typeParameters"]>;
+
+    // Yep... backwards compatibility. This is an optional one-tuple.
+    getSignature?: [ModelToObject<M.DeclarationReflection["getSignature"]>];
+
+    // Yep... backwards compatibility. This is an optional one-tuple.
+    setSignature?: [ModelToObject<M.DeclarationReflection["setSignature"]>];
+}
 
 export interface TypeParameterReflection
     extends Reflection,
-        S<M.TypeParameterReflection, "type"> {}
+        S<M.TypeParameterReflection, "type" | "default"> {}
 
 // Nothing extra yet.
 export interface ProjectReflection extends ContainerReflection {}
 
 export interface ContainerReflection
     extends Reflection,
-        S<M.ContainerReflection, "groups" | "categories"> {
+        S<M.ContainerReflection, "children" | "groups" | "categories"> {
     sources?: ModelToObject<SourceReferenceWrapper[]>;
 }
-
-/**
- * If a 3rd party serializer creates a loop when serializing, a pointer will be created
- * instead of re-serializing the [[DeclarationReflection]]
- */
-export interface ReflectionPointer extends S<M.Reflection, "id"> {}
 
 export interface Reflection
     extends S<
         M.Reflection,
         "id" | "name" | "kind" | "kindString" | "comment" | "decorates"
     > {
+    /** Will not be present if name === originalName */
     originalName?: M.Reflection["originalName"];
     flags: ReflectionFlags;
     decorators?: ModelToObject<DecoratorWrapper[]>;
-
-    children?: ModelToObject<M.Reflection>[];
-    parameters?: ModelToObject<M.Reflection>[];
-    typeParameter?: ModelToObject<M.Reflection>[];
-    signatures?: ModelToObject<M.Reflection>[];
-    indexSignature?: ModelToObject<M.Reflection>[];
-    getSignature?: ModelToObject<M.Reflection>[];
-    setSignature?: ModelToObject<M.Reflection>[];
 }
 
 // Types
@@ -204,10 +220,10 @@ export type SomeType =
     | InferredType
     | IntersectionType
     | IntrinsicType
+    | LiteralType
     | PredicateType
     | ReferenceType
     | ReflectionType
-    | StringLiteralType
     | TupleType
     | TypeOperatorType
     | TypeParameterType
@@ -257,9 +273,7 @@ export interface ReflectionType extends Type, S<M.ReflectionType, "type"> {
     declaration?: ModelToObject<M.ReflectionType["declaration"]>;
 }
 
-export interface StringLiteralType
-    extends Type,
-        S<M.StringLiteralType, "type" | "value"> {}
+export interface LiteralType extends Type, S<M.LiteralType, "type" | "value"> {}
 
 export interface TupleType extends Type, S<M.TupleType, "type"> {
     elements?: ModelToObject<M.TupleType["elements"]>;
@@ -272,6 +286,24 @@ export interface NamedTupleMemberType
     isOptional: boolean;
     element: ModelToObject<M.NamedTupleMember["element"]>;
 }
+
+export interface TemplateLiteralType
+    extends Type,
+        S<M.TemplateLiteralType, "type" | "head"> {
+    tail: [Type, string][];
+}
+export interface MappedType
+    extends Type,
+        S<
+            M.MappedType,
+            | "type"
+            | "parameter"
+            | "parameterType"
+            | "templateType"
+            | "readonlyModifier"
+            | "optionalModifier"
+            | "nameType"
+        > {}
 
 export interface TypeOperatorType
     extends Type,
@@ -293,25 +325,12 @@ export interface Type {}
 
 // Miscellaneous
 
+type BoolKeys<T> = {
+    [K in keyof T]-?: T[K] extends boolean ? K : never;
+}[keyof T];
+
 export interface ReflectionFlags
-    extends Partial<
-        S<
-            M.ReflectionFlags,
-            | "isPrivate"
-            | "isProtected"
-            | "isPublic"
-            | "isStatic"
-            | "isExported"
-            | "isExternal"
-            | "isOptional"
-            | "isRest"
-            | "hasExportAssignment"
-            | "isConstructorProperty"
-            | "isAbstract"
-            | "isConst"
-            | "isLet"
-        >
-    > {}
+    extends Partial<S<M.ReflectionFlags, BoolKeys<M.ReflectionFlags>>> {}
 
 export interface Comment
     extends Partial<S<M.Comment, "shortText" | "text" | "returns" | "tags">> {}

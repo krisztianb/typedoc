@@ -6,9 +6,7 @@ import {
     Reflection as JSONReflection,
 } from "../../schema";
 
-export class ParameterReflectionSerializer extends ReflectionSerializerComponent<
-    ParameterReflection
-> {
+export class ParameterReflectionSerializer extends ReflectionSerializerComponent<ParameterReflection> {
     supports(t: unknown) {
         return t instanceof ParameterReflection;
     }
@@ -19,15 +17,9 @@ export class ParameterReflectionSerializer extends ReflectionSerializerComponent
     ): JSONParameterReflection {
         const result: JSONParameterReflection = {
             ...obj,
+            type: this.owner.toObject(parameter.type),
+            defaultValue: this.owner.toObject(parameter.defaultValue),
         };
-
-        if (parameter.type) {
-            result.type = this.owner.toObject(parameter.type);
-        }
-
-        if (parameter.defaultValue) {
-            result.defaultValue = parameter.defaultValue;
-        }
 
         return result;
     }

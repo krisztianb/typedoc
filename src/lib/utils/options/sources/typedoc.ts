@@ -1,7 +1,8 @@
 import { Options } from "..";
-import { ParameterType, ParameterHint, SourceFileMode } from "../declaration";
+import { LogLevel } from "../../loggers";
+import { ParameterType, ParameterHint } from "../declaration";
 
-export function addTypeDocOptions(options: Options) {
+export function addTypeDocOptions(options: Pick<Options, "addDeclaration">) {
     options.addDeclaration({
         name: "options",
         help:
@@ -18,36 +19,16 @@ export function addTypeDocOptions(options: Options) {
     });
 
     options.addDeclaration({
-        name: "inputFiles",
-        help: "The initial input files to expand and then pass to TS.",
+        name: "entryPoints",
+        help:
+            "The entry points of your library, which files should be documented as available to consumers.",
         type: ParameterType.Array,
     });
 
     options.addDeclaration({
-        name: "mode",
-        help:
-            "Specifies the output mode the project is used to be compiled with: 'file' or 'modules'",
-        type: ParameterType.Map,
-        map: {
-            file: SourceFileMode.File,
-            modules: SourceFileMode.Modules,
-        },
-        defaultValue: SourceFileMode.Modules,
-    });
-    options.addDeclaration({
-        name: "includeDeclarations",
-        help: "Turn on parsing of .d.ts declaration files.",
-        type: ParameterType.Boolean,
-    });
-    options.addDeclaration({
-        name: "entryPoint",
-        help:
-            "Specifies the fully qualified name of the root symbol. Defaults to global namespace.",
-        type: ParameterType.String,
-    });
-    options.addDeclaration({
         name: "exclude",
-        help: "Define patterns for excluded files when specifying paths.",
+        help:
+            "Define paths to be excluded when expanding a directory that was specified as an entry point.",
         type: ParameterType.Array,
     });
     options.addDeclaration({
@@ -55,16 +36,11 @@ export function addTypeDocOptions(options: Options) {
         help:
             "Define patterns for files that should be considered being external.",
         type: ParameterType.Array,
+        defaultValue: ["**/node_modules/**"],
     });
     options.addDeclaration({
         name: "excludeExternals",
-        help:
-            "Prevent externally resolved TypeScript files from being documented.",
-        type: ParameterType.Boolean,
-    });
-    options.addDeclaration({
-        name: "excludeNotExported",
-        help: "Prevent symbols that are not exported from being documented.",
+        help: "Prevent externally resolved symbols from being documented.",
         type: ParameterType.Boolean,
     });
     options.addDeclaration({
@@ -81,11 +57,6 @@ export function addTypeDocOptions(options: Options) {
     options.addDeclaration({
         name: "excludeProtected",
         help: "Ignores protected variables and methods",
-        type: ParameterType.Boolean,
-    });
-    options.addDeclaration({
-        name: "ignoreCompilerErrors",
-        help: "Skips checking for TypeScript compilation errors if set.",
         type: ParameterType.Boolean,
     });
     options.addDeclaration({
@@ -205,14 +176,17 @@ export function addTypeDocOptions(options: Options) {
 
     options.addDeclaration({
         name: "help",
-        short: "h",
         help: "Print this message.",
         type: ParameterType.Boolean,
     });
     options.addDeclaration({
         name: "version",
-        short: "v",
         help: "Print TypeDoc's version.",
+        type: ParameterType.Boolean,
+    });
+    options.addDeclaration({
+        name: "showConfig",
+        help: "Print the resolved configuration and exit",
         type: ParameterType.Boolean,
     });
     options.addDeclaration({
@@ -228,9 +202,22 @@ export function addTypeDocOptions(options: Options) {
         type: ParameterType.Mixed,
     });
     options.addDeclaration({
+        name: "logLevel",
+        help: "Specify what level of logging should be used.",
+        type: ParameterType.Map,
+        map: LogLevel,
+        defaultValue: LogLevel.Info,
+    });
+    options.addDeclaration({
         name: "listInvalidSymbolLinks",
         help:
             "Emits a list of broken symbol [[navigation]] links after documentation generation",
         type: ParameterType.Boolean,
+    });
+    options.addDeclaration({
+        name: "markedOptions",
+        help:
+            "Specify the options passed to Marked, the Markdown parser used by TypeDoc",
+        type: ParameterType.Mixed,
     });
 }

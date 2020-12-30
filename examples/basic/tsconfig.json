@@ -1,3 +1,11 @@
 {
-    // this is only here to set this directory as the typescript root
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "CommonJS",
+        "jsx": "react",
+        "experimentalDecorators": true,
+        "resolveJsonModule": true,
+        "rootDir": "."
+    },
+    "include": ["."]
 }

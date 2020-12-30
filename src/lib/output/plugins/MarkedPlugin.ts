@@ -1,12 +1,12 @@
 import * as FS from "fs-extra";
 import * as Path from "path";
 import * as Marked from "marked";
-import * as HighlightJS from "highlight.js";
 import * as Handlebars from "handlebars";
 
 import { Component, ContextAwareRendererComponent } from "../components";
 import { RendererEvent, MarkdownEvent } from "../events";
 import { BindOption, readFile } from "../../utils";
+import { highlight, isSupportedLanguage } from "../../utils/highlighter";
 
 const customMarkedRenderer = new Marked.Renderer();
 
@@ -87,18 +87,12 @@ export class MarkedPlugin extends ContextAwareRendererComponent {
 
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         const that = this;
-        Handlebars.registerHelper("markdown", function (arg: any) {
+        Handlebars.registerHelper("markdown", function (this: any, arg: any) {
             return that.parseMarkdown(arg.fn(this), this);
         });
         Handlebars.registerHelper("relativeURL", (url: string) =>
             url ? this.getRelativeUrl(url) : url
         );
-
-        Marked.setOptions({
-            highlight: (text: any, lang: any) =>
-                this.getHighlighted(text, lang),
-            renderer: customMarkedRenderer,
-        });
     }
 
     /**
@@ -109,16 +103,16 @@ export class MarkedPlugin extends ContextAwareRendererComponent {
      * @return A html string with syntax highlighting.
      */
     public getHighlighted(text: string, lang?: string): string {
-        try {
-            if (lang) {
-                return HighlightJS.highlight(lang, text).value;
-            } else {
-                return HighlightJS.highlightAuto(text).value;
-            }
-        } catch (error) {
-            this.application.logger.warn(error.message);
+        lang = lang || "typescript";
+        lang = lang.toLowerCase();
+        if (!isSupportedLanguage(lang)) {
+            this.application.logger.warn(
+                `Unsupported highlight language "${lang}" will not be highlighted`
+            );
             return text;
         }
+
+        return highlight(text, lang);
     }
 
     /**
@@ -130,29 +124,26 @@ export class MarkedPlugin extends ContextAwareRendererComponent {
      */
     public parseMarkdown(text: string, context: any) {
         if (this.includes) {
-            text = text.replace(
-                this.includePattern,
-                (match: string, path: string) => {
-                    path = Path.join(this.includes!, path.trim());
-                    if (FS.existsSync(path) && FS.statSync(path).isFile()) {
-                        const contents = readFile(path);
-                        if (path.substr(-4).toLocaleLowerCase() === ".hbs") {
-                            const template = Handlebars.compile(contents);
-                            return template(context, {
-                                allowProtoMethodsByDefault: true,
-                                allowProtoPropertiesByDefault: true,
-                            });
-                        } else {
-                            return contents;
-                        }
+            text = text.replace(this.includePattern, (_match, path) => {
+                path = Path.join(this.includes!, path.trim());
+                if (FS.existsSync(path) && FS.statSync(path).isFile()) {
+                    const contents = readFile(path);
+                    if (path.substr(-4).toLocaleLowerCase() === ".hbs") {
+                        const template = Handlebars.compile(contents);
+                        return template(context, {
+                            allowProtoMethodsByDefault: true,
+                            allowProtoPropertiesByDefault: true,
+                        });
                     } else {
-                        this.application.logger.warn(
-                            "Could not find file to include: " + path
-                        );
-                        return "";
+                        return contents;
                     }
+                } else {
+                    this.application.logger.warn(
+                        "Could not find file to include: " + path
+                    );
+                    return "";
                 }
-            );
+            });
         }
 
         if (this.mediaDirectory) {
@@ -190,6 +181,8 @@ export class MarkedPlugin extends ContextAwareRendererComponent {
     protected onBeginRenderer(event: RendererEvent) {
         super.onBeginRenderer(event);
 
+        Marked.setOptions(this.createMarkedOptions());
+
         delete this.includes;
         if (this.includeSource) {
             const includes = Path.resolve(this.includeSource);
@@ -217,6 +210,34 @@ export class MarkedPlugin extends ContextAwareRendererComponent {
                 );
             }
         }
+    }
+
+    /**
+     * Creates an object with options that are passed to the markdown parser.
+     *
+     * @returns The options object for the markdown parser.
+     */
+    private createMarkedOptions(): Marked.MarkedOptions {
+        const markedOptions = (this.application.options.getValue(
+            "markedOptions"
+        ) ?? {}) as Marked.MarkedOptions;
+
+        if (
+            typeof markedOptions === "object" &&
+            !Array.isArray(markedOptions)
+        ) {
+            // Set some default values if they are not specified via the TypeDoc option
+            markedOptions.highlight ??= (text: any, lang: any) =>
+                this.getHighlighted(text, lang);
+            markedOptions.renderer ??= customMarkedRenderer;
+            markedOptions.mangle ??= false; // See https://github.com/TypeStrong/typedoc/issues/1395
+
+            return markedOptions;
+        }
+
+        throw new Error(
+            "The value provided via the 'markedOptions' option must be a non-array object."
+        );
     }
 
     /**

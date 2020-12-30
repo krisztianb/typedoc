@@ -1,11 +1,10 @@
 export { Application } from "./lib/application";
-export { CliApplication } from "./lib/cli";
 
 export { EventDispatcher, Event } from "./lib/utils/events";
 export { resetReflectionID } from "./lib/models/reflections/abstract";
 export { normalizePath } from "./lib/utils/fs";
 export * from "./lib/models/reflections";
-export * from "./lib/output/plugins";
+export { Converter } from "./lib/converter";
 export { Renderer } from "./lib/output/renderer";
 export {
     DefaultTheme,
@@ -19,13 +18,10 @@ export {
     Options,
     OptionsReader,
     ParameterHint,
-    ParameterScope,
     ParameterType,
     TypeDocOptions,
-    TypeDocAndTSOptions,
     TypeDocOptionMap,
     KeyToDeclaration,
-    SourceFileMode,
     TSConfigReader,
     TypeDocReader,
     ArgumentsReader,

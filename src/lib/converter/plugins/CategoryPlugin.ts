@@ -49,7 +49,7 @@ export class CategoryPlugin extends ConverterComponent {
     /**
      * Triggered when the converter begins converting a project.
      */
-    private onBegin() {
+    private onBegin(_context: Context) {
         // Set up static properties
         if (this.defaultCategory) {
             CategoryPlugin.defaultCategory = this.defaultCategory;
@@ -65,7 +65,7 @@ export class CategoryPlugin extends ConverterComponent {
      * @param context  The context object describing the current state the converter is in.
      * @param reflection  The reflection that is currently resolved.
      */
-    private onResolve(context: Context, reflection: Reflection) {
+    private onResolve(_context: Context, reflection: Reflection) {
         if (reflection instanceof ContainerReflection) {
             this.categorize(reflection);
         }
@@ -94,6 +94,8 @@ export class CategoryPlugin extends ConverterComponent {
             return;
         }
         obj.groups.forEach((group) => {
+            if (group.categories) return;
+
             group.categories = CategoryPlugin.getReflectionCategories(
                 group.children
             );
@@ -110,7 +112,7 @@ export class CategoryPlugin extends ConverterComponent {
     }
 
     private lumpCategorize(obj: ContainerReflection) {
-        if (!obj.children || obj.children.length === 0) {
+        if (!obj.children || obj.children.length === 0 || obj.categories) {
             return;
         }
         obj.categories = CategoryPlugin.getReflectionCategories(obj.children);
@@ -175,15 +177,13 @@ export class CategoryPlugin extends ConverterComponent {
     static getCategory(reflection: Reflection): string {
         function extractCategoryTag(comment: Comment) {
             const tags = comment.tags;
-            if (tags) {
-                const tagIndex = tags.findIndex(
-                    (tag) => tag.tagName === "category"
-                );
-                if (tagIndex >= 0) {
-                    const tag = tags[tagIndex].text;
-                    tags.splice(tagIndex, 1);
-                    return tag.trim();
-                }
+            const tagIndex = tags.findIndex(
+                (tag) => tag.tagName === "category"
+            );
+            if (tagIndex >= 0) {
+                const tag = tags[tagIndex].text;
+                tags.splice(tagIndex, 1);
+                return tag.trim();
             }
             return "";
         }
@@ -196,11 +196,14 @@ export class CategoryPlugin extends ConverterComponent {
             reflection.signatures
         ) {
             // If a reflection has signatures, use the first category tag amongst them
-            reflection.signatures.forEach((sig) => {
-                if (sig.comment && category === "") {
+            for (const sig of reflection.signatures) {
+                if (sig.comment) {
                     category = extractCategoryTag(sig.comment);
                 }
-            });
+                if (category != "") {
+                    break;
+                }
+            }
         }
         return category;
     }

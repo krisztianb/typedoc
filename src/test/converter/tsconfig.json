@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "CommonJS",
+        "jsx": "react",
+        "experimentalDecorators": true,
+        "resolveJsonModule": true,
+        "rootDir": ".",
+        "strictNullChecks": true
+    },
+    "include": ["."]
+}

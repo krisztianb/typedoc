@@ -7,7 +7,6 @@ import {
     ReflectionKind,
     TypeParameterReflection,
     DeclarationReflection,
-    ProjectReflection,
 } from "../../models/reflections/index";
 import { Component, ConverterComponent } from "../components";
 import { parseComment, getRawComment } from "../factories/comment";
@@ -15,7 +14,7 @@ import { Converter } from "../converter";
 import { Context } from "../context";
 import { partition, uniq } from "lodash";
 import { SourceReference } from "../../models";
-import { BindOption } from "../../utils";
+import { BindOption, removeIfPresent } from "../../utils";
 
 /**
  * These tags are not useful to display in the generated documentation.
@@ -83,8 +82,6 @@ export class CommentPlugin extends ConverterComponent {
             [Converter.EVENT_CREATE_DECLARATION]: this.onDeclaration,
             [Converter.EVENT_CREATE_SIGNATURE]: this.onDeclaration,
             [Converter.EVENT_CREATE_TYPE_PARAMETER]: this.onCreateTypeParameter,
-            [Converter.EVENT_FUNCTION_IMPLEMENTATION]: this
-                .onFunctionImplementation,
             [Converter.EVENT_RESOLVE_BEGIN]: this.onBeginResolve,
             [Converter.EVENT_RESOLVE]: this.onResolve,
         });
@@ -122,26 +119,41 @@ export class CommentPlugin extends ConverterComponent {
     private applyModifiers(reflection: Reflection, comment: Comment) {
         if (comment.hasTag("private")) {
             reflection.setFlag(ReflectionFlag.Private);
+            if (reflection.kindOf(ReflectionKind.CallSignature)) {
+                reflection.parent?.setFlag(ReflectionFlag.Private);
+            }
             comment.removeTags("private");
         }
 
         if (comment.hasTag("protected")) {
             reflection.setFlag(ReflectionFlag.Protected);
+            if (reflection.kindOf(ReflectionKind.CallSignature)) {
+                reflection.parent?.setFlag(ReflectionFlag.Protected);
+            }
             comment.removeTags("protected");
         }
 
         if (comment.hasTag("public")) {
             reflection.setFlag(ReflectionFlag.Public);
+            if (reflection.kindOf(ReflectionKind.CallSignature)) {
+                reflection.parent?.setFlag(ReflectionFlag.Public);
+            }
             comment.removeTags("public");
         }
 
         if (comment.hasTag("event")) {
+            if (reflection.kindOf(ReflectionKind.CallSignature)) {
+                if (reflection.parent) {
+                    reflection.parent.kind = ReflectionKind.Event;
+                }
+            }
             reflection.kind = ReflectionKind.Event;
-            // reflection.setFlag(ReflectionFlag.Event);
             comment.removeTags("event");
         }
 
-        if (reflection.kindOf(ReflectionKind.Module)) {
+        if (
+            reflection.kindOf(ReflectionKind.Module | ReflectionKind.Namespace)
+        ) {
             comment.removeTags("packagedocumentation");
         }
     }
@@ -149,7 +161,7 @@ export class CommentPlugin extends ConverterComponent {
     /**
      * Triggered when the converter begins converting a project.
      */
-    private onBegin() {
+    private onBegin(_context: Context) {
         this.comments = {};
     }
 
@@ -160,8 +172,9 @@ export class CommentPlugin extends ConverterComponent {
      * @param reflection  The reflection that is currently processed.
      */
     private onCreateTypeParameter(
-        context: Context,
-        reflection: TypeParameterReflection
+        _context: Context,
+        reflection: TypeParameterReflection,
+        _node?: ts.Node
     ) {
         const comment = reflection.parent && reflection.parent.comment;
         if (comment) {
@@ -178,8 +191,7 @@ export class CommentPlugin extends ConverterComponent {
 
             if (tag) {
                 reflection.comment = new Comment(tag.text);
-                // comment.tags must be set if we found a tag.
-                comment.tags!.splice(comment.tags!.indexOf(tag), 1);
+                removeIfPresent(comment.tags, tag);
             }
         }
     }
@@ -194,11 +206,14 @@ export class CommentPlugin extends ConverterComponent {
      * @param node  The node that is currently processed if available.
      */
     private onDeclaration(
-        context: Context,
+        _context: Context,
         reflection: Reflection,
         node?: ts.Node
     ) {
         if (!node) {
+            return;
+        }
+        if (reflection.kindOf(ReflectionKind.FunctionOrMethod)) {
             return;
         }
         const rawComment = getRawComment(node);
@@ -206,15 +221,7 @@ export class CommentPlugin extends ConverterComponent {
             return;
         }
 
-        if (
-            reflection.kindOf(ReflectionKind.FunctionOrMethod) ||
-            (reflection.kindOf(ReflectionKind.Event) &&
-                reflection["signatures"])
-        ) {
-            const comment = parseComment(rawComment, reflection.comment);
-            this.applyModifiers(reflection, comment);
-            this.removeExcludedTags(comment);
-        } else if (reflection.kindOf(ReflectionKind.Namespace)) {
+        if (reflection.kindOf(ReflectionKind.Namespace)) {
             this.storeModuleComment(rawComment, reflection);
         } else {
             const comment = parseComment(rawComment, reflection.comment);
@@ -222,27 +229,13 @@ export class CommentPlugin extends ConverterComponent {
             this.removeExcludedTags(comment);
             reflection.comment = comment;
         }
-    }
 
-    /**
-     * Triggered when the converter has found a function implementation.
-     *
-     * @param context  The context object describing the current state the converter is in.
-     * @param reflection  The reflection that is currently processed.
-     * @param node  The node that is currently processed if available.
-     */
-    private onFunctionImplementation(
-        context: Context,
-        reflection: Reflection,
-        node?: ts.Node
-    ) {
-        if (!node) {
-            return;
-        }
-
-        const comment = getRawComment(node);
-        if (comment) {
-            reflection.comment = parseComment(comment, reflection.comment);
+        if (reflection.kindOf(ReflectionKind.Module)) {
+            const tag = reflection.comment?.getTag("module");
+            if (tag) {
+                reflection.name = tag.text.trim();
+                removeIfPresent(reflection.comment?.tags, tag);
+            }
         }
     }
 
@@ -272,10 +265,7 @@ export class CommentPlugin extends ConverterComponent {
         const project = context.project;
         const reflections = Object.values(project.reflections);
 
-        // remove signatures
-        // TODO: This doesn't really belong here. Removing comments due to @hidden yes, but private/protected no.
-        //   it needs to be here for now because users can use @public/@private/@protected to override visibility.
-        //   the converter should probably have a post resolve step in which it handles the excludePrivate/protected options.
+        // Remove hidden reflections
         const hidden = reflections.filter((reflection) =>
             CommentPlugin.isHidden(
                 reflection,
@@ -284,9 +274,7 @@ export class CommentPlugin extends ConverterComponent {
                 excludeProtected
             )
         );
-        hidden.forEach((reflection) =>
-            project.removeReflection(reflection, true)
-        );
+        hidden.forEach((reflection) => project.removeReflection(reflection));
 
         // remove functions with empty signatures after their signatures have been removed
         const [allRemoved, someRemoved] = partition(
@@ -298,7 +286,7 @@ export class CommentPlugin extends ConverterComponent {
             (method) => method.signatures?.length === 0
         );
         allRemoved.forEach((reflection) =>
-            project.removeReflection(reflection, true)
+            project.removeReflection(reflection)
         );
         someRemoved.forEach((reflection) => {
             reflection.sources = uniq(
@@ -322,7 +310,7 @@ export class CommentPlugin extends ConverterComponent {
      * @param context  The context object describing the current state the converter is in.
      * @param reflection  The reflection that is currently resolved.
      */
-    private onResolve(context: Context, reflection: DeclarationReflection) {
+    private onResolve(_context: Context, reflection: DeclarationReflection) {
         if (!(reflection instanceof DeclarationReflection)) {
             return;
         }
@@ -384,56 +372,6 @@ export class CommentPlugin extends ConverterComponent {
         for (const tag of this.excludeTags) {
             comment.removeTags(tag);
         }
-    }
-
-    /**
-     * Remove all tags with the given name from the given comment instance.
-     * @deprecated Use [[Comment.removeTags]] instead.
-     * Warn in 0.17, remove in 0.18.
-     *
-     * @param comment  The comment that should be modified.
-     * @param tagName  The name of the that that should be removed.
-     */
-    static removeTags(comment: Comment | undefined, tagName: string) {
-        // Can't use a logger here, we don't have one.
-        console.warn(
-            "Using deprecated function removeTags. This function will be removed in the next minor release."
-        );
-        comment?.removeTags(tagName);
-    }
-
-    /**
-     * Remove the specified reflections from the project.
-     * @deprecated use [[ProjectReflection.removeReflection]]
-     * Warn in 0.17, remove in 0.18
-     */
-    static removeReflections(
-        project: ProjectReflection,
-        reflections: Reflection[]
-    ) {
-        // Can't use a logger here, we don't have one.
-        console.warn(
-            "Using deprecated function removeReflections. This function will be removed in the next minor release."
-        );
-        for (const reflection of reflections) {
-            project.removeReflection(reflection, true);
-        }
-    }
-
-    /**
-     * Remove the given reflection from the project.
-     * @deprecated use [[ProjectReflection.removeReflection]]
-     * Warn in 0.17, remove in 0.18
-     */
-    static removeReflection(
-        project: ProjectReflection,
-        reflection: Reflection
-    ) {
-        // Can't use a logger here, we don't have one.
-        console.warn(
-            "Using deprecated function removeReflections. This function will be removed in the next minor release."
-        );
-        project.removeReflection(reflection, true);
     }
 
     /**

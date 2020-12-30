@@ -1,128 +1,88 @@
+import { ok as assert } from "assert";
 import * as ts from "typescript";
-import { IMinimatch } from "minimatch";
 
-import { Logger } from "../utils/loggers";
-import { createMinimatch } from "../utils/paths";
 import {
     Reflection,
     ProjectReflection,
     ContainerReflection,
-    Type,
+    DeclarationReflection,
+    ReflectionKind,
+    ReflectionFlag,
 } from "../models/index";
 
-import { createTypeParameter } from "./factories/type-parameter";
-import { Converter } from "./converter";
+import type { Converter } from "./converter";
+import { isNamedNode } from "./utils/nodes";
+import { ConverterEvents } from "./converter-events";
 
 /**
  * The context describes the current state the converter is in.
+ * @internal
  */
 export class Context {
     /**
      * The converter instance that has created the context.
      */
-    converter: Converter;
-
-    /**
-     * A list of all files that have been passed to the TypeScript compiler.
-     */
-    fileNames: string[];
+    readonly converter: Converter;
 
     /**
      * The TypeChecker instance returned by the TypeScript compiler.
      */
-    checker: ts.TypeChecker;
+    get checker(): ts.TypeChecker {
+        return this.program.getTypeChecker();
+    }
 
     /**
-     * The program that is currently processed.
+     * The program currently being converted.
+     * Accessing this property will throw if a source file is not currently being converted.
      */
-    program: ts.Program;
+    get program(): ts.Program {
+        assert(
+            this._program,
+            "Tried to access Context.program when not converting a source file"
+        );
+        return this._program;
+    }
+    private _program?: ts.Program;
+
+    /**
+     * All programs being converted.
+     */
+    readonly programs: readonly ts.Program[];
 
     /**
      * The project that is currently processed.
      */
-    project: ProjectReflection;
+    readonly project: ProjectReflection;
 
     /**
      * The scope or parent reflection that is currently processed.
      */
-    scope: Reflection;
-
-    /**
-     * Is the current source file marked as being external?
-     */
-    isExternal?: boolean;
-
-    /**
-     * Is the current source file a declaration file?
-     */
-    isDeclaration?: boolean;
-
-    /**
-     * The currently set type parameters.
-     */
-    typeParameters?: ts.MapLike<Type>;
-
-    /**
-     * The currently set type arguments.
-     */
-    typeArguments?: Type[];
-
-    /**
-     * Is the converter in inheritance mode?
-     */
-    isInherit?: boolean;
-
-    /**
-     * The node that has started the inheritance mode.
-     */
-    inheritParent?: ts.Node;
-
-    /**
-     * List symbol fqns of inherited children already visited while inheriting.
-     */
-    inheritedChildren?: string[];
-
-    /**
-     * The names of the children of the scope before inheritance has been started.
-     */
-    inherited?: string[];
-
-    /**
-     * A list of parent nodes that have been passed to the visit function.
-     */
-    visitStack: ts.Node[];
-
-    /**
-     * The pattern that should be used to flag external source files.
-     */
-    private externalPattern?: Array<IMinimatch>;
+    readonly scope: Reflection;
 
     /**
      * Create a new Context instance.
      *
      * @param converter  The converter instance that has created the context.
-     * @param fileNames  A list of all files that have been passed to the TypeScript compiler.
+     * @param entryPoints  A list of all entry points for this project.
      * @param checker  The TypeChecker instance returned by the TypeScript compiler.
+     * @internal
      */
     constructor(
         converter: Converter,
-        fileNames: string[],
-        checker: ts.TypeChecker,
-        program: ts.Program
+        programs: readonly ts.Program[],
+        project: ProjectReflection,
+        scope: Context["scope"] = project
     ) {
         this.converter = converter;
-        this.fileNames = fileNames;
-        this.checker = checker;
-        this.program = program;
-        this.visitStack = [];
+        this.programs = programs;
 
-        const project = new ProjectReflection(converter.name);
         this.project = project;
-        this.scope = project;
+        this.scope = scope;
+    }
 
-        if (converter.externalPattern) {
-            this.externalPattern = createMinimatch(converter.externalPattern);
-        }
+    /** @internal */
+    get logger() {
+        return this.converter.application.logger;
     }
 
     /**
@@ -176,10 +136,14 @@ export class Context {
     expectSymbolAtLocation(node: ts.Node): ts.Symbol {
         const symbol = this.getSymbolAtLocation(node);
         if (!symbol) {
+            const { line } = ts.getLineAndCharacterOfPosition(
+                node.getSourceFile(),
+                node.pos
+            );
             throw new Error(
                 `Expected a symbol for node with kind ${
                     ts.SyntaxKind[node.kind]
-                }`
+                } at ${node.getSourceFile().fileName}:${line + 1}`
             );
         }
         return symbol;
@@ -188,18 +152,44 @@ export class Context {
     resolveAliasedSymbol(symbol: ts.Symbol): ts.Symbol;
     resolveAliasedSymbol(symbol: ts.Symbol | undefined): ts.Symbol | undefined;
     resolveAliasedSymbol(symbol: ts.Symbol | undefined) {
-        return symbol && ts.SymbolFlags.Alias & symbol.flags
-            ? this.checker.getAliasedSymbol(symbol)
-            : symbol;
+        while (symbol && ts.SymbolFlags.Alias & symbol.flags) {
+            symbol = this.checker.getAliasedSymbol(symbol);
+        }
+        return symbol;
     }
 
-    /**
-     * Return the current logger instance.
-     *
-     * @returns The current logger instance.
-     */
-    getLogger(): Logger {
-        return this.converter.application.logger;
+    createDeclarationReflection(
+        kind: ReflectionKind,
+        symbol: ts.Symbol | undefined,
+        name = getHumanName(symbol?.name ?? "unknown")
+    ) {
+        const reflection = new DeclarationReflection(name, kind, this.scope);
+        this.addChild(reflection);
+        if (symbol && this.converter.isExternal(symbol)) {
+            reflection.setFlag(ReflectionFlag.External);
+        }
+        this.registerReflection(reflection, symbol);
+
+        this.converter.trigger(
+            ConverterEvents.CREATE_DECLARATION,
+            this,
+            reflection,
+            // FIXME this isn't good enough.
+            symbol && this.converter.getNodesForSymbol(symbol, kind)[0]
+        );
+
+        return reflection;
+    }
+
+    addChild(reflection: DeclarationReflection) {
+        if (this.scope instanceof ContainerReflection) {
+            this.scope.children ??= [];
+            this.scope.children.push(reflection);
+        }
+    }
+
+    shouldIgnore(symbol: ts.Symbol) {
+        return this.converter.shouldIgnore(symbol, this.checker);
     }
 
     /**
@@ -207,18 +197,10 @@ export class Context {
      * passed to this method to ensure that the project helper functions work correctly.
      *
      * @param reflection  The reflection that should be registered.
-     * @param node  The node the given reflection was resolved from.
      * @param symbol  The symbol the given reflection was resolved from.
      */
-    registerReflection(reflection: Reflection, symbol?: ts.Symbol) {
-        if (symbol) {
-            this.project.registerReflection(
-                reflection,
-                this.checker.getFullyQualifiedName(symbol)
-            );
-        } else {
-            this.project.registerReflection(reflection);
-        }
+    registerReflection(reflection: Reflection, symbol: ts.Symbol | undefined) {
+        this.project.registerReflection(reflection, symbol);
     }
 
     /**
@@ -234,234 +216,32 @@ export class Context {
         this.converter.trigger(name, this, reflection, node);
     }
 
-    /**
-     * Run the given callback with the context configured for the given source file.
-     *
-     * @param node  The TypeScript node containing the source file declaration.
-     * @param callback  The callback that should be executed.
-     */
-    withSourceFile(node: ts.SourceFile, callback: Function) {
-        const isExternal = this.isExternalFile(node.fileName);
-        if (this.isOutsideDocumentation(node.fileName, isExternal)) {
-            return;
-        }
-
-        const isDeclaration = node.isDeclarationFile;
-        if (isDeclaration) {
-            const lib = this.converter.getDefaultLib();
-            const isLib = node.fileName.substr(-lib.length) === lib;
-            if (!this.converter.includeDeclarations || isLib) {
-                return;
-            }
-        }
-
-        this.isExternal = isExternal;
-        this.isDeclaration = isDeclaration;
-
-        this.trigger(Converter.EVENT_FILE_BEGIN, this.project, node);
-        callback();
-
-        this.isExternal = false;
-        this.isDeclaration = false;
+    /** @internal */
+    setActiveProgram(program: ts.Program | undefined) {
+        this._program = program;
     }
 
     /**
      * @param callback  The callback function that should be executed with the changed context.
      */
-    public withScope(scope: Reflection | undefined, callback: () => void): void;
-
-    /**
-     * @param parameters  An array of type parameters that should be set on the context while the callback is invoked.
-     * @param callback  The callback function that should be executed with the changed context.
-     */
-    public withScope(
-        scope: Reflection | undefined,
-        parameters: ts.NodeArray<ts.TypeParameterDeclaration> | undefined,
-        callback: () => void
-    ): void;
-
-    /**
-     * @param parameters  An array of type parameters that should be set on the context while the callback is invoked.
-     * @param preserve  Should the currently set type parameters of the context be preserved?
-     * @param callback  The callback function that should be executed with the changed context.
-     */
-    public withScope(
-        scope: Reflection | undefined,
-        parameters: ts.NodeArray<ts.TypeParameterDeclaration> | undefined,
-        preserve: boolean,
-        callback: () => void
-    ): void;
-
-    /**
-     * Run the given callback with the scope of the context set to the given reflection.
-     *
-     * @param scope  The reflection that should be set as the scope of the context while the callback is invoked.
-     */
-    public withScope(scope: Reflection, ...args: any[]): void {
-        if (!scope || !args.length) {
-            return;
-        }
-        const callback = args.pop();
-        const parameters = args.shift();
-
-        const oldScope = this.scope;
-        const oldTypeArguments = this.typeArguments;
-        const oldTypeParameters = this.typeParameters;
-
-        this.scope = scope;
-        this.typeParameters = parameters
-            ? this.extractTypeParameters(parameters, args.length > 0)
-            : this.typeParameters;
-        this.typeArguments = undefined;
-
-        callback();
-
-        this.scope = oldScope;
-        this.typeParameters = oldTypeParameters;
-        this.typeArguments = oldTypeArguments;
-    }
-
-    /**
-     * Inherit the children of the given TypeScript node to the current scope.
-     *
-     * @param baseNode  The node whose children should be inherited.
-     * @param typeArguments  The type arguments that apply while inheriting the given node.
-     * @return The resulting reflection / the current scope.
-     */
-    inherit(
-        baseNode: ts.Node,
-        typeArguments?: ReadonlyArray<ts.TypeNode>
-    ): Reflection {
-        const wasInherit = this.isInherit;
-        const oldInherited = this.inherited;
-        const oldInheritParent = this.inheritParent;
-        const oldTypeArguments = this.typeArguments;
-
-        this.isInherit = true;
-        this.inheritParent = baseNode;
-        this.inherited = [];
-
-        const target = <ContainerReflection>this.scope;
-        if (!(target instanceof ContainerReflection)) {
-            throw new Error("Expected container reflection");
-        }
-
-        if (baseNode.symbol) {
-            const id = this.checker.getFullyQualifiedName(baseNode.symbol);
-            if (this.inheritedChildren && this.inheritedChildren.includes(id)) {
-                return target;
-            } else {
-                this.inheritedChildren = this.inheritedChildren || [];
-                this.inheritedChildren.push(id);
-            }
-        }
-
-        if (target.children) {
-            this.inherited = target.children.map((c) => c.name);
-        } else {
-            this.inherited = [];
-        }
-
-        if (typeArguments) {
-            this.typeArguments = this.converter.convertTypes(
-                this,
-                typeArguments
-            );
-        } else {
-            this.typeArguments = undefined;
-        }
-
-        this.converter.convertNode(this, baseNode);
-
-        this.isInherit = wasInherit;
-        this.inherited = oldInherited;
-        this.inheritParent = oldInheritParent;
-        this.typeArguments = oldTypeArguments;
-
-        if (!this.isInherit) {
-            delete this.inheritedChildren;
-        }
-
-        return target;
-    }
-
-    /**
-     * Determines if the given file is outside of the project's generated documentation.
-     * This is not, and is not intended to be, foolproof. Plugins may remove reflections
-     * in the file that this method returns true for, See GH#1166 for discussion on tradeoffs.
-     *
-     * @param fileName
-     * @internal
-     */
-    isOutsideDocumentation(
-        fileName: string,
-        isExternal = this.isExternalFile(fileName)
-    ) {
-        return isExternal && this.converter.excludeExternals;
-    }
-
-    /**
-     * Checks if the given file is external.
-     *
-     * @param fileName
-     * @internal
-     */
-    isExternalFile(fileName: string) {
-        let isExternal = !this.fileNames.includes(fileName);
-        if (!isExternal && this.externalPattern) {
-            isExternal = this.externalPattern.some((mm) => mm.match(fileName));
-        }
-        return isExternal;
-    }
-
-    /**
-     * Convert the given list of type parameter declarations into a type mapping.
-     *
-     * @param parameters  The list of type parameter declarations that should be converted.
-     * @param preserve  Should the currently set type parameters of the context be preserved?
-     * @returns The resulting type mapping.
-     */
-    private extractTypeParameters(
-        parameters: ts.NodeArray<ts.TypeParameterDeclaration>,
-        preserve?: boolean
-    ): ts.MapLike<Type> {
-        const typeParameters: ts.MapLike<Type> = {};
-
-        if (preserve) {
-            Object.keys(this.typeParameters || {}).forEach((key) => {
-                typeParameters[key] = this.typeParameters![key];
-            });
-        }
-
-        parameters.forEach(
-            (declaration: ts.TypeParameterDeclaration, index: number) => {
-                if (!declaration.symbol) {
-                    return;
-                }
-                const name = declaration.symbol.name;
-                if (this.typeArguments && this.typeArguments[index]) {
-                    typeParameters[name] = this.typeArguments[index];
-                } else {
-                    const param = createTypeParameter(this, declaration);
-                    if (param) {
-                        typeParameters[name] = param;
-                    }
-                }
-            }
+    public withScope(scope: Reflection): Context {
+        const context = new Context(
+            this.converter,
+            this.programs,
+            this.project,
+            scope
         );
-
-        return typeParameters;
+        context.setActiveProgram(this._program);
+        return context;
     }
 }
 
-function isNamedNode(
-    node: ts.Node
-): node is ts.Node & {
-    name: ts.Identifier | ts.PrivateIdentifier | ts.ComputedPropertyName;
-} {
-    return (
-        node["name"] &&
-        (ts.isIdentifierOrPrivateIdentifier(node["name"]) ||
-            ts.isComputedPropertyName(node["name"]))
-    );
+const builtInSymbolRegExp = /^__@(\w+)$/;
+
+function getHumanName(name: string) {
+    const match = builtInSymbolRegExp.exec(name);
+    if (match) {
+        return `[Symbol.${match[1]}]`;
+    }
+    return name;
 }

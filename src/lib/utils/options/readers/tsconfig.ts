@@ -1,11 +1,11 @@
-import { resolve, dirname, basename } from "path";
+import { resolve, basename } from "path";
 import { existsSync, statSync } from "fs";
 
 import * as ts from "typescript";
 
 import { OptionsReader, Options } from "../options";
 import { Logger } from "../../loggers";
-import { IGNORED } from "../sources/typescript";
+import { normalizePath } from "../../fs";
 
 function isFile(file: string) {
     return existsSync(file) && statSync(file).isFile();
@@ -21,15 +21,9 @@ export class TSConfigReader implements OptionsReader {
 
     read(container: Options, logger: Logger): void {
         const tsconfigOpt = container.getValue("tsconfig");
-        const projectOpt = container.getCompilerOptions().project;
 
         if (!container.isDefault("tsconfig")) {
             this._tryReadOptions(tsconfigOpt, container, logger);
-            return;
-        }
-
-        if (projectOpt) {
-            this._tryReadOptions(projectOpt, container, logger);
             return;
         }
 
@@ -58,32 +52,28 @@ export class TSConfigReader implements OptionsReader {
             return;
         }
 
-        fileToRead = resolve(fileToRead);
+        fileToRead = normalizePath(resolve(fileToRead));
 
-        const { config } = ts.readConfigFile(fileToRead, ts.sys.readFile);
-        const {
-            fileNames,
-            errors,
-            options,
-            raw: { typedocOptions = {} },
-        } = ts.parseJsonConfigFileContent(
-            config,
-            ts.sys,
-            dirname(fileToRead),
+        let fatalError = false as boolean;
+        const parsed = ts.getParsedCommandLineOfConfigFile(
+            fileToRead,
             {},
-            fileToRead
+            {
+                ...ts.sys,
+                onUnRecoverableConfigFileDiagnostic(error) {
+                    logger?.diagnostic(error);
+                    fatalError = true;
+                },
+            }
         );
 
-        logger?.diagnostics(errors);
-
-        if (container.isDefault("inputFiles")) {
-            container.setValue("inputFiles", fileNames);
+        if (!parsed || fatalError) {
+            return;
         }
 
-        for (const key of IGNORED) {
-            delete options[key];
-        }
+        logger?.diagnostics(parsed.errors);
 
+        const typedocOptions = parsed.raw?.typedocOptions ?? {};
         if (typedocOptions.options) {
             logger?.error(
                 [
@@ -93,14 +83,18 @@ export class TSConfigReader implements OptionsReader {
             );
             delete typedocOptions.options;
         }
-
-        for (const [key, val] of Object.entries(options)) {
-            try {
-                container.setValue(key, val);
-            } catch (error) {
-                logger?.error(error.message);
-            }
+        if (typedocOptions.tsconfig) {
+            logger?.error(
+                "typedocOptions in tsconfig file may not specify a tsconfig file to read"
+            );
+            delete typedocOptions.tsconfig;
         }
+
+        container.setCompilerOptions(
+            parsed.fileNames,
+            parsed.options,
+            parsed.projectReferences
+        );
         for (const [key, val] of Object.entries(typedocOptions || {})) {
             try {
                 container.setValue(key, val);

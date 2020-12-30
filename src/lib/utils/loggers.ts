@@ -1,5 +1,10 @@
 import * as ts from "typescript";
 import * as Util from "util";
+import { url } from "inspector";
+import { resolve } from "path";
+import { red, yellow, cyan, gray } from "colors/safe";
+
+const isDebugging = () => Boolean(url());
 
 /**
  * List of known log levels. Used to specify the urgency of a log message.
@@ -9,7 +14,6 @@ export enum LogLevel {
     Info,
     Warn,
     Error,
-    Success,
 }
 
 /**
@@ -28,6 +32,11 @@ export class Logger {
      * How many warning messages have been logged?
      */
     warningCount = 0;
+
+    /**
+     * The minimum logging level to print.
+     */
+    level = LogLevel.Info;
 
     /**
      * Has an error been raised through the log method?
@@ -84,7 +93,7 @@ export class Logger {
      * @param args  The arguments that should be printed into the given message.
      */
     public success(text: string, ...args: string[]) {
-        this.log(Util.format(text, ...args), LogLevel.Success);
+        this.log(Util.format(text, ...args), LogLevel.Info);
     }
 
     /**
@@ -120,10 +129,11 @@ export class Logger {
     /**
      * Print a log message.
      *
-     * @param message  The message itself.
+     * @param _message  The message itself.
      * @param level  The urgency of the log message.
+     * @param _newLine  Should the logger print a trailing whitespace?
      */
-    public log(message: string, level: LogLevel = LogLevel.Info) {
+    public log(_message: string, level: LogLevel = LogLevel.Info) {
         if (level === LogLevel.Error) {
             this.errorCount += 1;
         }
@@ -149,29 +159,11 @@ export class Logger {
      * @param diagnostic  The TypeScript message that should be logged.
      */
     public diagnostic(diagnostic: ts.Diagnostic) {
-        let output: string;
-        if (diagnostic.file) {
-            output = diagnostic.file.fileName;
-            output +=
-                "(" +
-                ts.getLineAndCharacterOfPosition(
-                    diagnostic.file,
-                    diagnostic.start || 0
-                ).line +
-                ")";
-            output +=
-                ts.sys.newLine +
-                " " +
-                ts.flattenDiagnosticMessageText(
-                    diagnostic.messageText,
-                    ts.sys.newLine
-                );
-        } else {
-            output = ts.flattenDiagnosticMessageText(
-                diagnostic.messageText,
-                ts.sys.newLine
-            );
-        }
+        const output = ts.formatDiagnosticsWithColorAndContext([diagnostic], {
+            getCanonicalFileName: resolve,
+            getCurrentDirectory: () => process.cwd(),
+            getNewLine: () => ts.sys.newLine,
+        });
 
         switch (diagnostic.category) {
             case ts.DiagnosticCategory.Error:
@@ -197,29 +189,21 @@ export class ConsoleLogger extends Logger {
      * @param level  The urgency of the log message.
      * @param newLine  Should the logger print a trailing whitespace?
      */
-    public log(
-        message: string,
-        level: LogLevel = LogLevel.Info,
-        newLine?: boolean
-    ) {
+    public log(message: string, level: LogLevel = LogLevel.Info) {
         super.log(message, level);
+        if (level < this.level && !isDebugging()) {
+            return;
+        }
 
-        let output = "";
-        if (level === LogLevel.Error) {
-            output += "Error: ";
-        }
-        if (level === LogLevel.Warn) {
-            output += "Warning: ";
-        }
-        output += message;
+        const output =
+            {
+                [LogLevel.Error]: red("Error: "),
+                [LogLevel.Warn]: yellow("Warning: "),
+                [LogLevel.Info]: cyan("Info: "),
+                [LogLevel.Verbose]: gray("Debug: "),
+            }[level] + message;
 
-        if (newLine || level === LogLevel.Success) {
-            ts.sys.write(ts.sys.newLine);
-        }
         ts.sys.write(output + ts.sys.newLine);
-        if (level === LogLevel.Success) {
-            ts.sys.write(ts.sys.newLine);
-        }
     }
 }
 

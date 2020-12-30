@@ -1,15 +1,6 @@
-/**
- * The TypeDoc main module and namespace.
- *
- * The [[Application]] class holds the core logic of the cli application. All code related
- * to resolving reflections is stored in [[TypeDoc.Factories]], the actual data models can be found
- * in [[TypeDoc.Models]] and the final rendering is defined in [[TypeDoc.Output]].
- */
-
 import * as Path from "path";
 import * as FS from "fs";
-import * as typescript from "typescript";
-import * as semver from "semver";
+import * as ts from "typescript";
 
 import { Converter } from "./converter/index";
 import { Renderer } from "./output/renderer";
@@ -20,8 +11,7 @@ import {
     ConsoleLogger,
     CallbackLogger,
     PluginHost,
-    writeFile,
-    readFile,
+    normalizePath,
 } from "./utils/index";
 import { createMinimatch } from "./utils/paths";
 
@@ -32,22 +22,30 @@ import {
     DUMMY_APPLICATION_OWNER,
 } from "./utils/component";
 import { Options, BindOption } from "./utils";
-import {
-    TypeDocAndTSOptions,
-    TypeDocOptions,
-} from "./utils/options/declaration";
+import { TypeDocOptions } from "./utils/options/declaration";
+import { flatMap } from "./utils/array";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const packageInfo = require("../../package.json") as {
+    version: string;
+    peerDependencies: { typescript: string };
+};
+
+const supportedVersionMajorMinor = packageInfo.peerDependencies.typescript
+    .split("||")
+    .map((version) => version.replace(/^\s*|\.x\s*$/g, ""));
 
 /**
  * The default TypeDoc main application class.
  *
- * This class holds the two main components of TypeDoc, the [[Dispatcher]] and
- * the [[Renderer]]. When running TypeDoc, first the [[Dispatcher]] is invoked which
+ * This class holds the two main components of TypeDoc, the [[Converter]] and
+ * the [[Renderer]]. When running TypeDoc, first the [[Converter]] is invoked which
  * generates a [[ProjectReflection]] from the passed in source files. The
  * [[ProjectReflection]] is a hierarchical model representation of the TypeScript
  * project. Afterwards the model is passed to the [[Renderer]] which uses an instance
  * of [[BaseTheme]] to generate the final documentation.
  *
- * Both the [[Dispatcher]] and the [[Renderer]] are subclasses of the [[EventDispatcher]]
+ * Both the [[Converter]] and the [[Renderer]] are subclasses of the [[AbstractComponent]]
  * and emit a series of events while processing the project. Subscribe to these Events
  * to control the application flow or alter the output.
  */
@@ -83,14 +81,11 @@ export class Application extends ChildableComponent<
     @BindOption("logger")
     loggerType!: string | Function;
 
-    @BindOption("ignoreCompilerErrors")
-    ignoreCompilerErrors!: boolean;
-
     @BindOption("exclude")
     exclude!: Array<string>;
 
-    @BindOption("inputFiles")
-    inputFiles!: string[];
+    @BindOption("entryPoints")
+    entryPoints!: string[];
 
     @BindOption("options")
     optionsFile!: string;
@@ -101,12 +96,7 @@ export class Application extends ChildableComponent<
     /**
      * The version number of TypeDoc.
      */
-    static VERSION = "{{ VERSION }}";
-
-    /**
-     * The supported TypeScript version.
-     */
-    static SUPPORTED_TS_VERSION = "{{ SUPPORTED }}";
+    static VERSION = packageInfo.version;
 
     /**
      * Create a new TypeDoc application instance.
@@ -130,9 +120,7 @@ export class Application extends ChildableComponent<
      *
      * @param options  The desired options to set.
      */
-    bootstrap(
-        options: Partial<TypeDocAndTSOptions> = {}
-    ): { hasErrors: boolean; inputFiles: string[] } {
+    bootstrap(options: Partial<TypeDocOptions> = {}): void {
         for (const [key, val] of Object.entries(options)) {
             try {
                 this.options.setValue(key as keyof TypeDocOptions, val);
@@ -150,6 +138,7 @@ export class Application extends ChildableComponent<
             this.logger = new Logger();
             this.options.setLogger(this.logger);
         }
+        this.logger.level = this.options.getValue("logLevel");
 
         this.plugins.load();
 
@@ -162,11 +151,6 @@ export class Application extends ChildableComponent<
             }
         }
         this.options.read(this.logger);
-
-        return {
-            hasErrors: this.logger.hasErrors(),
-            inputFiles: this.inputFiles,
-        };
     }
 
     /**
@@ -184,11 +168,7 @@ export class Application extends ChildableComponent<
     }
 
     public getTypeScriptVersion(): string {
-        const tsPath = this.getTypeScriptPath();
-        const json = JSON.parse(
-            readFile(Path.join(tsPath, "..", "package.json"))
-        );
-        return json.version;
+        return ts.version;
     }
 
     /**
@@ -197,66 +177,82 @@ export class Application extends ChildableComponent<
      * @param src  A list of source that should be compiled and converted.
      * @returns An instance of ProjectReflection on success, undefined otherwise.
      */
-    public convert(src: string[]): ProjectReflection | undefined {
-        this.logger.writeln(
+    public convert(): ProjectReflection | undefined {
+        this.logger.verbose(
             "Using TypeScript %s from %s",
             this.getTypeScriptVersion(),
             this.getTypeScriptPath()
         );
 
         if (
-            !semver.satisfies(
-                typescript.version,
-                Application.SUPPORTED_TS_VERSION
+            !supportedVersionMajorMinor.some(
+                (version) => version == ts.versionMajorMinor
             )
         ) {
             this.logger.warn(
-                `You are running in an unsupported TypeScript version! TypeDoc supports ${Application.SUPPORTED_TS_VERSION}`
+                `You are running with an unsupported TypeScript version! TypeDoc supports ${supportedVersionMajorMinor.join(
+                    ", "
+                )}`
             );
         }
 
-        const result = this.converter.convert(src);
-        if (result.errors && result.errors.length) {
-            this.logger.diagnostics(result.errors);
-            if (this.ignoreCompilerErrors) {
-                this.logger.resetErrors();
-                return result.project;
-            } else {
-                return;
-            }
-        } else {
-            return result.project;
+        if (Object.keys(this.options.getCompilerOptions()).length === 0) {
+            this.logger.warn(
+                `No compiler options set. This likely means that TypeDoc did not find your tsconfig.json. Generated documentation will probably be empty.`
+            );
         }
+
+        const programs = [
+            ts.createProgram({
+                rootNames: this.application.options.getFileNames(),
+                options: this.application.options.getCompilerOptions(),
+                projectReferences: this.application.options.getProjectReferences(),
+            }),
+        ];
+
+        // This might be a solution style tsconfig, in which case we need to add a program for each
+        // reference so that the converter can look through each of these.
+        if (programs[0].getRootFileNames().length === 0) {
+            this.logger.verbose(
+                "tsconfig appears to be a solution style tsconfig - creating programs for references"
+            );
+            const resolvedReferences = programs[0].getResolvedProjectReferences();
+            for (const ref of resolvedReferences ?? []) {
+                if (!ref) continue; // This indicates bad configuration... will be reported later.
+
+                programs.push(
+                    ts.createProgram({
+                        options: ref.commandLine.options,
+                        rootNames: ref.commandLine.fileNames,
+                        projectReferences: ref.commandLine.projectReferences,
+                    })
+                );
+            }
+        }
+
+        this.logger.verbose(`Converting with ${programs.length} programs`);
+
+        const errors = flatMap(programs, ts.getPreEmitDiagnostics);
+        if (errors.length) {
+            this.logger.diagnostics(errors);
+            return;
+        }
+
+        return this.converter.convert(
+            this.expandInputFiles(this.entryPoints),
+            programs
+        );
     }
 
     /**
-     * @param src  A list of source files whose documentation should be generated.
+     * Render HTML for the given project
      */
-    public generateDocs(src: string[], out: string): boolean;
-
-    /**
-     * @param project  The project the documentation should be generated for.
-     */
-    public generateDocs(project: ProjectReflection, out: string): boolean;
-
-    /**
-     * Run the documentation generator for the given set of files.
-     *
-     * @param out  The path the documentation should be written to.
-     * @returns TRUE if the documentation could be generated successfully, otherwise FALSE.
-     */
-    public generateDocs(
-        input: ProjectReflection | string[],
+    public async generateDocs(
+        project: ProjectReflection,
         out: string
-    ): boolean {
-        const project =
-            input instanceof ProjectReflection ? input : this.convert(input);
-        if (!project) {
-            return false;
-        }
-
+    ): Promise<void> {
         out = Path.resolve(out);
-        this.renderer.render(project, out);
+        await this.renderer.render(project, out);
         if (this.logger.hasErrors()) {
             this.logger.error(
                 "Documentation could not be generated due to the errors above."
@@ -264,19 +260,7 @@ export class Application extends ChildableComponent<
         } else {
             this.logger.success("Documentation generated at %s", out);
         }
-
-        return true;
     }
-
-    /**
-     * @param src  A list of source that should be compiled and converted.
-     */
-    public generateJson(src: string[], out: string): boolean;
-
-    /**
-     * @param project  The project that should be converted.
-     */
-    public generateJson(project: ProjectReflection, out: string): boolean;
 
     /**
      * Run the converter for the given set of files and write the reflections to a json file.
@@ -284,16 +268,10 @@ export class Application extends ChildableComponent<
      * @param out  The path and file name of the target file.
      * @returns TRUE if the json file could be written successfully, otherwise FALSE.
      */
-    public generateJson(
-        input: ProjectReflection | string[],
+    public async generateJson(
+        project: ProjectReflection,
         out: string
-    ): boolean {
-        const project =
-            input instanceof ProjectReflection ? input : this.convert(input);
-        if (!project) {
-            return false;
-        }
-
+    ): Promise<void> {
         out = Path.resolve(out);
         const eventData = {
             outputDirectory: Path.dirname(out),
@@ -303,10 +281,8 @@ export class Application extends ChildableComponent<
             begin: eventData,
             end: eventData,
         });
-        writeFile(out, JSON.stringify(ser, null, "\t"), false);
+        await FS.promises.writeFile(out, JSON.stringify(ser, null, "\t"));
         this.logger.success("JSON written to %s", out);
-
-        return true;
     }
 
     /**
@@ -319,19 +295,20 @@ export class Application extends ChildableComponent<
      * @param inputFiles  The list of files that should be expanded.
      * @returns  The list of input files with expanded directories.
      */
-    public expandInputFiles(inputFiles: string[] = []): string[] {
+    public expandInputFiles(inputFiles: readonly string[]): string[] {
         const files: string[] = [];
 
-        const exclude = this.exclude ? createMinimatch(this.exclude) : [];
+        const exclude = createMinimatch(this.exclude);
 
         function isExcluded(fileName: string): boolean {
             return exclude.some((mm) => mm.match(fileName));
         }
 
-        const includeJson = this.options.getCompilerOptions().resolveJsonModule;
-        const supportedFileRegex = this.options.getCompilerOptions().allowJs
-            ? /\.[tj]sx?$/
-            : /\.tsx?$/;
+        const supportedFileRegex =
+            this.options.getCompilerOptions().allowJs ||
+            this.options.getCompilerOptions().checkJs
+                ? /\.[tj]sx?$/
+                : /\.tsx?$/;
         function add(file: string, entryPoint: boolean) {
             let stats: FS.Stats;
             try {
@@ -345,10 +322,7 @@ export class Application extends ChildableComponent<
                 file = `${file}/`;
             }
 
-            if (
-                (!fileIsDir || !entryPoint) &&
-                isExcluded(file.replace(/\\/g, "/"))
-            ) {
+            if (!entryPoint && isExcluded(normalizePath(file))) {
                 return;
             }
 
@@ -357,14 +331,20 @@ export class Application extends ChildableComponent<
                     add(Path.join(file, next), false);
                 });
             } else if (supportedFileRegex.test(file)) {
-                files.push(file);
-            } else if (includeJson && file.endsWith(".json")) {
-                files.push(file);
+                files.push(normalizePath(file));
             }
         }
 
         inputFiles.forEach((file) => {
-            add(Path.resolve(file), true);
+            const resolved = Path.resolve(file);
+            if (!FS.existsSync(resolved)) {
+                this.logger.warn(
+                    `Provided entry point ${file} does not exist and will not be included in the docs.`
+                );
+                return;
+            }
+
+            add(resolved, true);
         });
 
         return files;
@@ -379,6 +359,6 @@ export class Application extends ChildableComponent<
             `TypeDoc ${Application.VERSION}`,
             `Using TypeScript ${this.getTypeScriptVersion()} from ${this.getTypeScriptPath()}`,
             "",
-        ].join(typescript.sys.newLine);
+        ].join("\n");
     }
 }
